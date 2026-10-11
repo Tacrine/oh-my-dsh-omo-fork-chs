@@ -61,7 +61,7 @@
  *     [--notice <file>] [--upstream-license <file>] [--quiet]
  */
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
@@ -119,6 +119,18 @@ const LICENSE_DOCUMENTS = ['LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']
  * copy is visible, which is exactly why it needs this assertion instead.
  */
 const FORBIDDEN_SHIPPED_PATHS = ['test/.probe-machine-path.txt']
+
+/**
+ * The root-level names `npm pack` includes whatever `files[]` says: `README*`,
+ * `LICEN[CS]E*` and `package.json`. Measured against a planted, untracked
+ * `LICENSE.old.md`, which appeared in the tarball and took the entry count from 34
+ * to 35 while every other gate stayed green. `CHANGELOG*` is deliberately absent
+ * because npm does not auto-include it: a planted `CHANGELOG.old.md` did not ship.
+ *
+ * Case-insensitive on purpose. The check only ever sees untracked paths, so a
+ * broader pattern cannot flag a file the repository actually ships.
+ */
+const NPM_AUTO_INCLUDED_ROOT = [/^README/i, /^LICEN[CS]E/i, /^package\.json$/i]
 
 /** Strings `NOTICE.md` must carry; each one is a claim the license relies on. */
 const NOTICE_STRINGS = [
@@ -357,6 +369,19 @@ function trackedPaths() {
 }
 
 /**
+ * Is this path a directory on disk? Used to decide directory-ness for `files[]`
+ * entries, which is not a property of the string: `npm pack` treats `"test"` and
+ * `"test/"` identically.
+ */
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+/**
  * Untracked paths under a directory, **ignored ones included**.
  *
  * `--exclude-standard` is deliberately absent. It hides ignored files, and an
@@ -529,7 +554,14 @@ function main() {
   // a file nobody has thought of yet. `npm pack` ships the contents of a listed
   // directory and does not consult `.gitignore`, so both untracked classes matter
   // and both are covered by one invocation without `--exclude-standard`.
-  const listedDirectories = files.filter((entry) => entry.endsWith('/'))
+  //
+  // Directory-ness is decided from the filesystem, not from the string suffix: an
+  // entry written without a trailing slash is still a directory to `npm pack` —
+  // measured, `"test"` and `"test/"` pack identically — so a suffix-only test would
+  // leave such an entry unscanned. A5 separately requires the slashed form for the
+  // four directories it lists, so today this is defence in depth rather than the
+  // only guard, but A8c should not depend on that coupling.
+  const listedDirectories = files.filter((entry) => entry.endsWith('/') || isDirectory(join(ROOT, entry)))
   const untrackedUnderListed = listedDirectories.flatMap((directory) => untrackedPathsUnder(directory))
   if (untrackedUnderListed.length !== 0) {
     fail(
@@ -540,6 +572,24 @@ function main() {
     )
   }
   record('A8c', MANIFEST, `${listedDirectories.length} listed director(ies) hold no untracked path: ${listedDirectories.join(', ')}`)
+
+  // A8d: the root-level names `npm pack` includes whatever `files[]` says. A8c
+  // cannot see these, because they are not inside a listed directory, and the pack
+  // step's tracked-set assertion only runs where a tarball is built — which in CI
+  // is a clean checkout, so a stray root file would never appear there either. An
+  // untracked `LICENSE.old.md` therefore shipped in a tarball with every gate
+  // green. Measured, 34 entries to 35.
+  const untrackedRoot = untrackedPathsUnder('.').filter((path) => !path.includes('/'))
+  const autoIncludedRoot = untrackedRoot.filter((path) => NPM_AUTO_INCLUDED_ROOT.some((pattern) => pattern.test(path)))
+  if (autoIncludedRoot.length !== 0) {
+    fail(
+      'A8d',
+      ROOT,
+      `these untracked root files match npm's auto-include patterns and would be published whatever files[] says: ` +
+        `${autoIncludedRoot.join(', ')}. Remove them, or commit them if they are meant to ship`,
+    )
+  }
+  record('A8d', ROOT, `${untrackedRoot.length} untracked root path(s), none matching npm's auto-include patterns`)
 
   // A9: the MIT document is a MIT document and carries its scope line.
   const mitPath = join(ROOT, 'LICENSE-MIT.md')

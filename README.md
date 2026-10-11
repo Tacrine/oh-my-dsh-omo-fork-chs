@@ -205,10 +205,11 @@ What each one proves:
   zero-byte guard, and the package check's negative paths. It is 55 tests and it needs nothing
   installed.
 - **`npm run check`** is `node tools/check-package.mjs && node tools/verify-patch.mjs`. The first
-  runs 18 structural and license assertions (manifest identity, the four `exports`, the single
+  runs 19 structural and license assertions (manifest identity, the four `exports`, the single
   self-reference row, the nine persona anchors and their files, the `files[]` coverage, the eleven
   persona byte counts, the license pointers, the three license documents, the paths that must never
-  ship and the untracked-file check over every directory `files[]` lists, the upstream fingerprint
+  ship, the untracked-file check over every directory `files[]` lists and the untracked root files
+  npm auto-includes, the upstream fingerprint
   when one is supplied, the modification-notice claims, the license scope mapping and the per-entry
   anchors
   that pin each scope block to the content it claims, the machine-path
