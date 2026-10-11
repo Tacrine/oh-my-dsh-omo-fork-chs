@@ -231,7 +231,8 @@ npm run port -- --src <dir holding cordis.patch.yml>
 - [`LICENSE-SUL-1.0.md`](./LICENSE-SUL-1.0.md) 覆盖上游衍生内容：`personas/`、`cordis.patch.yml`、
   `plan-aware-persona.mjs`、`index.js` 与 `baseline/cordis.patch.yml`。
 - [`LICENSE-MIT.md`](./LICENSE-MIT.md) 覆盖我们自己的作品：`tools/`、`test/`、`.github/`、
-  `baseline/README.md`、`package.json`、`.gitignore`、`README.md`、`README.zh.md`、`CHANGELOG.md`
+  `baseline/README.md`、`package.json`、`.gitignore`、`.gitattributes`、`README.md`、`README.zh.md`、
+  `CHANGELOG.md`
   与 `NOTICE.md`。
 - [`NOTICE.md`](./NOTICE.md) 是权威声明：修改声明、上游署名，以及机器可读的许可范围映射，其中包含
   决定每个受跟踪路径归哪个块的匹配规则。若本 README 与 `NOTICE.md` 有任何不一致，以 NOTICE 为准。

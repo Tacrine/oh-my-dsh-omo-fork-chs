@@ -67,7 +67,8 @@ each file is covered by exactly one of them. It is not MIT-only.
   upstream-derived content: `personas/`, `cordis.patch.yml`, `plan-aware-persona.mjs`, `index.js`
   and `baseline/cordis.patch.yml`.
 - `LICENSE-MIT.md` covers our own work: `tools/`, `test/`, `.github/`, `baseline/README.md`,
-  `package.json`, `.gitignore`, `README.md`, `README.zh.md`, `CHANGELOG.md` and `NOTICE.md`.
+  `package.json`, `.gitignore`, `.gitattributes`, `README.md`, `README.zh.md`, `CHANGELOG.md` and
+  `NOTICE.md`.
 - `NOTICE.md` is the authoritative declaration: the prominent modification notice, the upstream
   attribution, the free-of-charge and non-commercial statement, the unofficial-fork statement, and
   the machine-readable licence scope mapping.

@@ -259,7 +259,8 @@ The scope mapping, matching the two blocks in [`NOTICE.md`](./NOTICE.md):
   `personas/`, `cordis.patch.yml`, `plan-aware-persona.mjs`, `index.js` and
   `baseline/cordis.patch.yml`.
 - [`LICENSE-MIT.md`](./LICENSE-MIT.md) covers our own work: `tools/`, `test/`, `.github/`,
-  `baseline/README.md`, `package.json`, `.gitignore`, `README.md`, `README.zh.md`, `CHANGELOG.md`
+  `baseline/README.md`, `package.json`, `.gitignore`, `.gitattributes`, `README.md`, `README.zh.md`,
+  `CHANGELOG.md`
   and `NOTICE.md`.
 - [`NOTICE.md`](./NOTICE.md) is the authoritative declaration: the modification notice, the upstream
   attribution, and the machine-readable scope mapping, including the match rule that decides which
