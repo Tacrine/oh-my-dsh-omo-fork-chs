@@ -31,16 +31,33 @@ const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest(
 
 /**
  * Run the check against the given extra flags.
- * @returns `{ status, stderr }`, with the status taken from the process itself.
+ *
+ * `env` is optional and defaults to the ambient environment. Pass it whenever a
+ * case depends on the upstream-licence variables, so that the ambient
+ * environment cannot decide whether the case passes: CI sets the fingerprint at
+ * job level, and a case that assumed it was unset would fail there while passing
+ * locally.
+ *
+ * @returns `{ status, stdout, stderr }`, with the status taken from the process itself.
  */
-function runCheck(extraFlags) {
+function runCheck(extraFlags, env) {
   const args = [TOOL, ...extraFlags]
+  const options = { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+  if (env !== undefined) options.env = env
   try {
-    const stdout = execFileSync(process.execPath, args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    const stdout = execFileSync(process.execPath, args, options)
     return { status: 0, stdout, stderr: '' }
   } catch (error) {
     return { status: error.status ?? 1, stdout: error.stdout ?? '', stderr: error.stderr ?? String(error.message) }
   }
+}
+
+/** The ambient environment with both upstream-licence variables removed. */
+function envWithoutUpstreamLicense() {
+  const env = { ...process.env }
+  delete env.OMO_UPSTREAM_LICENSE
+  delete env.OMO_UPSTREAM_LICENSE_SHA256
+  return env
 }
 
 test.before(() => {
@@ -158,11 +175,26 @@ test('a fingerprint that is not 64 hex characters is a hard error, never a skip'
 })
 
 test('the unbroken tree passes, so the negative cases above are not vacuous', () => {
-  const result = runCheck([])
-  assert.equal(result.status, 0, `the real tree must pass, got stderr: ${result.stderr}`)
-  const report = JSON.parse(result.stdout)
+  // The upstream-licence variables are removed explicitly rather than inherited:
+  // with a fingerprint in the environment the tool reports `licenseHash: "ok"`,
+  // which is correct behaviour, so an inherited value would make this case pass
+  // or fail for a reason that has nothing to do with the tree being unbroken.
+  const clean = runCheck([], envWithoutUpstreamLicense())
+  assert.equal(clean.status, 0, `the real tree must pass, got stderr: ${clean.stderr}`)
+  const report = JSON.parse(clean.stdout)
   assert.equal(report.verdict, 'OK')
   assert.equal(report.licenseHash, 'skipped')
   assert.equal(report.selfReferences, 1)
   assert.equal(report.personaAnchors.length, 9)
+
+  // The same tree and the same command, one environment variable different: the
+  // only thing that changes is which route the upstream-fingerprint check took,
+  // which is what makes `skipped` above a real observation rather than a
+  // constant, and what proves the job-level fingerprint CI sets is exercised.
+  const fingerprinted = runCheck([], { ...envWithoutUpstreamLicense(), OMO_UPSTREAM_LICENSE_SHA256: 'B61AC928F152D13517328263E6BEE9175B928F9AB696A2D2CA2B6CFD961DDC32' })
+  assert.equal(fingerprinted.status, 0, `the fingerprint route must pass, got stderr: ${fingerprinted.stderr}`)
+  const fingerprintedReport = JSON.parse(fingerprinted.stdout)
+  assert.equal(fingerprintedReport.verdict, 'OK')
+  assert.equal(fingerprintedReport.licenseHash, 'ok')
+  assert.equal(fingerprintedReport.licenseHashSource, 'fingerprint')
 })

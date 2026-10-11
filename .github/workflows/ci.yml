@@ -1,0 +1,77 @@
+# Continuous integration for the chs fork.
+#
+# The pipeline is deliberately dependency-free up to the point where it needs a
+# runtime: `npm test` and `tools/check-package.mjs` both run in a clean checkout
+# with nothing installed, and only the deep YAML comparison needs js-yaml, which
+# is installed into the gitignored `.dsh-verify/` directory for that one step.
+#
+# Two things are asserted as JSON fields rather than as exit codes, because both
+# tools can exit 0 while reporting that they skipped the work they were asked to
+# do: `verify-patch.mjs` reports `yamlCompare: "skipped"` when it cannot resolve
+# a runtime, and a tarball assertion that matches nothing would otherwise pass on
+# an empty listing.
+
+name: CI
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22.x, 24.x]
+        os: [ubuntu-latest, windows-latest]
+    env:
+      # The verifier reads this itself rather than taking a --runtime flag,
+      # because Windows npm runs scripts through cmd.exe while POSIX shells
+      # expand variables, so one script string would behave differently on the
+      # two runners.
+      DSH_RUNTIME: ${{ github.workspace }}/.dsh-verify/node_modules
+      # The fingerprint route pins the expected upstream hash without shipping
+      # the upstream file. Pointing the file variable at the checked-out copy of
+      # our own licence would compare that file with itself and prove nothing
+      # about upstream fidelity, so CI uses the fingerprint and leaves the file
+      # route to local acceptance runs against the real upstream document.
+      OMO_UPSTREAM_LICENSE_SHA256: B61AC928F152D13517328263E6BEE9175B928F9AB696A2D2CA2B6CFD961DDC32
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Run the test suite
+        run: npm test
+
+      - name: Run the zero-dependency package check
+        run: node tools/check-package.mjs
+
+      # `--legacy-peer-deps` skips peer installation, so the include plugin's own
+      # peers have to be named explicitly or the verifier cannot import it:
+      # `@deepseek-ai/cordis-plugin-include` needs `@deepseek-ai/cordis-plugin-loader`,
+      # and that loader needs `@deepseek-ai/cordis`. Without them the run fails with
+      # "Cannot find package '@deepseek-ai/cordis-plugin-loader'", and then with the
+      # same error naming `@deepseek-ai/cordis`. js-yaml is pinned to ^4.1.0 because
+      # the verifier imports `js-yaml/dist/js-yaml.mjs`, a v4 path.
+      - name: Install the verification runtime
+        run: npm install --prefix .dsh-verify --no-package-lock --legacy-peer-deps js-yaml@^4.1.0 @deepseek-ai/cordis-plugin-include@^1.0.9 @deepseek-ai/cordis-plugin-loader@~1.0.5 @deepseek-ai/cordis@~4.0.4
+
+      - name: Compare the published patch against the frozen baseline
+        shell: bash
+        run: |
+          node tools/verify-patch.mjs --legacy baseline/cordis.patch.yml --runtime "${{ github.workspace }}/.dsh-verify/node_modules" > .dsh-verify/verify.json
+          node -e "const r = require('./.dsh-verify/verify.json'); if (r.verdict !== 'IDENTICAL') { console.error('verdict is ' + r.verdict); process.exit(1) } if (r.yamlCompare !== 'ok') { console.error('yamlCompare is ' + r.yamlCompare); process.exit(1) } if (r.sites.length !== 11) { console.error('sites is ' + r.sites.length); process.exit(1) } console.log('verdict IDENTICAL, yamlCompare ok, sites ' + r.sites.length)"
+
+      - name: Assert the published file list
+        shell: bash
+        run: |
+          npm pack --dry-run > .dsh-verify/pack.txt 2>&1
+          node -e "const t = require('fs').readFileSync('.dsh-verify/pack.txt', 'utf8'); const need = ['plan-aware-persona.mjs', 'index.js', 'cordis.patch.yml', 'personas/atlas.md', 'baseline/cordis.patch.yml', 'LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']; const miss = need.filter((s) => !t.includes(s)); if (miss.length) { console.error('missing from the tarball', miss); process.exit(1) } console.log('the tarball carries all eight asserted entries')"
