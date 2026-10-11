@@ -356,6 +356,33 @@ function trackedPaths() {
   }
 }
 
+/**
+ * Untracked paths under a directory, **ignored ones included**.
+ *
+ * `--exclude-standard` is deliberately absent. It hides ignored files, and an
+ * ignored file inside a directory that `files[]` lists still ships, because
+ * `npm pack` does not consult `.gitignore` when `files[]` is present. Measured:
+ * `.gitignore`'s temporary-directory pattern carries a trailing slash and so
+ * matches directories only, and a planted `test/.tmp-probe/x.txt` was ignored by
+ * it and still appeared in the tarball. `git ls-files --others -- <dir>` lists
+ * both classes, so one invocation covers the whole gap.
+ *
+ * @param directory - a `files[]` entry ending in a slash.
+ */
+function untrackedPathsUnder(directory) {
+  try {
+    return execFileSync('git', ['ls-files', '--others', '--', directory], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '')
+  } catch (cause) {
+    throw new Error(
+      `cannot list the untracked files under ${directory}: run inside a git checkout, so that a stray ` +
+        `file inside a directory this package ships can be detected before it ships (git said: ${cause.message.trim()})`,
+    )
+  }
+}
+
 /** The entries of one scope block, in declaration order. */
 function scopeEntries(notice, marker) {
   const start = notice.indexOf(marker)
@@ -497,6 +524,23 @@ function main() {
   }
   record('A8b', ROOT, `${FORBIDDEN_SHIPPED_PATHS.length} forbidden shipped path(s) absent: ${FORBIDDEN_SHIPPED_PATHS.join(', ')}`)
 
+  // A8c: nothing untracked may sit inside a directory that `files[]` lists. A8b
+  // closes one name; this closes the class, because a name list cannot enumerate
+  // a file nobody has thought of yet. `npm pack` ships the contents of a listed
+  // directory and does not consult `.gitignore`, so both untracked classes matter
+  // and both are covered by one invocation without `--exclude-standard`.
+  const listedDirectories = files.filter((entry) => entry.endsWith('/'))
+  const untrackedUnderListed = listedDirectories.flatMap((directory) => untrackedPathsUnder(directory))
+  if (untrackedUnderListed.length !== 0) {
+    fail(
+      'A8c',
+      MANIFEST,
+      `files[] lists ${listedDirectories.join(', ')}, and these untracked paths sit inside them: ` +
+        `${untrackedUnderListed.join(', ')}. npm pack ships the contents of a listed directory, so each of these would be published`,
+    )
+  }
+  record('A8c', MANIFEST, `${listedDirectories.length} listed director(ies) hold no untracked path: ${listedDirectories.join(', ')}`)
+
   // A9: the MIT document is a MIT document and carries its scope line.
   const mitPath = join(ROOT, 'LICENSE-MIT.md')
   const mitText = readText(mitPath)
@@ -582,16 +626,33 @@ function main() {
     }
   }
   // A13 also asserts the mapping is *correct*, not merely exhaustive. Coverage
-  // alone would stay green if the two blocks' contents were swapped, which would
-  // declare upstream SUL-1.0 content to be MIT — a licence claim, not a style
-  // point. `baseline/cordis.patch.yml` is the cheapest anchor because its bytes
-  // are already proven equal to the source patch's, so a mapping that files it
-  // under MIT is wrong by construction; `README.md` is the converse anchor, a
-  // file this repository wrote.
+  // alone would stay green if the two blocks' contents were swapped, or if a
+  // single entry moved from one block to the other, and either mistake
+  // misdeclares that file's licence.
+  //
+  // Every entry of both blocks is therefore pinned by name, not by a
+  // representative path. A representative leaves the remaining entries free to
+  // move: with five anchors for the MIT block's ten entries, moving `NOTICE.md`
+  // into the sul block kept coverage at exactly one per path and kept every
+  // anchor holding, while the shipped notice declared this repository's own text
+  // to be upstream SUL-1.0 content. The path-level anchors below are kept as well,
+  // because they assert a different property: that the prefix entries actually
+  // cover a real file inside them.
+  const EXPECTED_SCOPE = {
+    sul: ['personas/', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'baseline/cordis.patch.yml'],
+    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', '.gitignore', 'README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md'],
+  }
   const SUL_ANCHORS = ['baseline/cordis.patch.yml', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'personas/atlas.md']
-  const MIT_ANCHORS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs']
+  const MIT_ANCHORS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', 'baseline/README.md', 'NOTICE.md']
   const blockFor = (id) => scopeBlocks.find((block) => block.id === id)
   const blockCovers = (block, path) => block.entries.some((entry) => entryMatches(entry, path))
+  for (const [id, expected] of Object.entries(EXPECTED_SCOPE)) {
+    const actual = blockFor(id).entries
+    const missing = expected.filter((entry) => !actual.includes(entry))
+    const extra = actual.filter((entry) => !expected.includes(entry))
+    if (missing.length !== 0) fail('A13', NOTICE, `the ${id}-scope block does not name ${missing.join(', ')}`)
+    if (extra.length !== 0) fail('A13', NOTICE, `the ${id}-scope block names ${extra.join(', ')}, which the frozen mapping does not put there`)
+  }
   for (const path of SUL_ANCHORS) {
     if (!blockCovers(blockFor('sul'), path)) fail('A13', NOTICE, `${path} is upstream-derived content but the sul-scope block does not cover it`)
     if (blockCovers(blockFor('mit'), path)) fail('A13', NOTICE, `${path} is upstream-derived content but the mit-scope block claims it`)
@@ -600,7 +661,7 @@ function main() {
     if (!blockCovers(blockFor('mit'), path)) fail('A13', NOTICE, `${path} is this repository's own content but the mit-scope block does not cover it`)
     if (blockCovers(blockFor('sul'), path)) fail('A13', NOTICE, `${path} is this repository's own content but the sul-scope block claims it`)
   }
-  record('A13-scope', NOTICE, `${SUL_ANCHORS.length} sul anchor(s) and ${MIT_ANCHORS.length} mit anchor(s) verified against the block that claims them`)
+  record('A13-scope', NOTICE, `${EXPECTED_SCOPE.sul.length} sul entr(ies) and ${EXPECTED_SCOPE.mit.length} mit entr(ies) pinned by name; ${SUL_ANCHORS.length} + ${MIT_ANCHORS.length} path anchor(s) resolved against them`)
   record('A13', NOTICE, `${tracked.length} tracked path(s) classified against ${scopeBlocks.length} block(s)`)
 
   // A14: no machine path in any tracked file, including this one, except at the

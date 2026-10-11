@@ -9,8 +9,13 @@
  * one matters because a tamper that silently changed nothing would make the case
  * pass for the wrong reason.
  *
- * The fixtures are written under `test/.tmp/`, which is ignored, and removed
- * afterwards. Nothing here touches a tracked file.
+ * The fixtures are written **outside the repository**, under the system temporary
+ * directory, and removed afterwards. Nothing here touches a tracked file, and
+ * nothing here sits inside a directory that `files[]` lists either: the package
+ * check now refuses to let an untracked file live under one of those, because
+ * `npm pack` ships the contents of a listed directory and does not consult
+ * `.gitignore`. Keeping the fixtures in `test/.tmp/` would have made the check's
+ * own tree assertion fire on the test suite's scaffolding.
  */
 
 import test from 'node:test'
@@ -18,13 +23,15 @@ import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..')
 const TOOL = join(ROOT, 'tools', 'check-package.mjs')
 // A subdirectory of its own, so that test files running in parallel processes
 // cannot delete each other's fixtures.
-const TMP = join(import.meta.dirname, '.tmp', 'check-package')
+const SHARED_TMP = join(tmpdir(), 'omo-chs-qa')
+const TMP = join(SHARED_TMP, 'check-package')
 
 /** SHA256 of a file's bytes, so a fixture can prove it differs from its source. */
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex')
@@ -66,11 +73,11 @@ test.before(() => {
 
 test.after(() => {
   rmSync(TMP, { recursive: true, force: true })
-  // Remove the shared parent too when it is empty, so `test/.tmp/` is left with
-  // nothing in it. Whichever test file finishes last wins the race; the other's
-  // attempt fails harmlessly because the directory is not empty yet.
+  // Remove the shared parent too when it is empty, so the temporary directory is
+  // left with nothing in it. Whichever test file finishes last wins the race; the
+  // other's attempt fails harmlessly because the directory is not empty yet.
   try {
-    rmdirSync(join(import.meta.dirname, '.tmp'))
+    rmdirSync(SHARED_TMP)
   } catch {
     // Still populated by a sibling test file, which will remove it in turn.
   }

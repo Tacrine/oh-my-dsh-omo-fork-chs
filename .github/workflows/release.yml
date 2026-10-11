@@ -62,6 +62,18 @@ jobs:
       - name: Compare the published patch against the frozen baseline
         run: node tools/verify-patch.mjs --legacy baseline/cordis.patch.yml --runtime "${{ github.workspace }}/.dsh-verify/node_modules"
 
+      # The last gate before an irreversible publish, and the only place the packed
+      # set is available. The middle assertion is the one a name list cannot fake:
+      # `npm pack` ships the contents of a directory listed in `files[]` and does
+      # not consult `.gitignore`, so an untracked file inside one of them would
+      # otherwise be published with every name check green.
+      - name: Assert the published file list
+        shell: bash
+        run: |
+          npm pack --dry-run --json > "$RUNNER_TEMP/pack.json" 2>"$RUNNER_TEMP/pack.err"
+          git ls-files > "$RUNNER_TEMP/tracked.txt"
+          node -e "const fs = require('fs'); const tmp = process.env.RUNNER_TEMP; const packed = JSON.parse(fs.readFileSync(tmp + '/pack.json', 'utf8'))[0].files.map((f) => f.path); const tracked = new Set(fs.readFileSync(tmp + '/tracked.txt', 'utf8').split('\n').map((s) => s.trim()).filter(Boolean)); const need = ['plan-aware-persona.mjs', 'index.js', 'cordis.patch.yml', 'personas/atlas.md', 'baseline/cordis.patch.yml', 'LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']; const miss = need.filter((s) => !packed.includes(s)); if (miss.length) { console.error('missing from the tarball', miss); process.exit(1) } const untracked = packed.filter((p) => !tracked.has(p)); if (untracked.length) { console.error('packed but not tracked', untracked); process.exit(1) } const forbid = packed.filter((p) => p === 'cordis.local.patch.yml' || p === 'test/.probe-machine-path.txt' || p.startsWith('.dsh-verify/') || p.startsWith('.dsh/')); if (forbid.length) { console.error('must not ship', forbid); process.exit(1) } console.log('the tarball carries all eight asserted entries, ' + packed.length + ' paths, every one tracked, and none forbidden')"
+
       - name: Check whether this version is already on npm
         id: preflight
         shell: bash

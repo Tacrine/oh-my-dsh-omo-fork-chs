@@ -77,12 +77,15 @@ jobs:
           node tools/verify-patch.mjs --legacy baseline/cordis.patch.yml --runtime "${{ github.workspace }}/.dsh-verify/node_modules" > .dsh-verify/verify.json
           node -e "const r = require('./.dsh-verify/verify.json'); if (r.verdict !== 'IDENTICAL') { console.error('verdict is ' + r.verdict); process.exit(1) } if (r.yamlCompare !== 'ok') { console.error('yamlCompare is ' + r.yamlCompare); process.exit(1) } if (r.sites.length !== 11) { console.error('sites is ' + r.sites.length); process.exit(1) } console.log('verdict IDENTICAL, yamlCompare ok, sites ' + r.sites.length)"
 
-      # The negative half matters as much as the positive one: `files[]` covers
-      # `test/`, so the QA probe would ship inside it and satisfy every other
-      # assertion. The list is checked against the real listing rather than the
-      # tracked set, because `npm pack` does not consult the index.
+      # Three things are asserted, and the middle one is the one a name list cannot
+      # fake: the entries that must be present, the structural invariant that the
+      # packed set contains only tracked paths, and the entries that must never
+      # ship. `npm pack` ships the contents of a directory listed in `files[]` and
+      # does not consult `.gitignore`, so an untracked file inside one of them
+      # would otherwise be published with every name check green.
       - name: Assert the published file list
         shell: bash
         run: |
-          npm pack --dry-run > .dsh-verify/pack.txt 2>&1
-          node -e "const t = require('fs').readFileSync('.dsh-verify/pack.txt', 'utf8'); const need = ['plan-aware-persona.mjs', 'index.js', 'cordis.patch.yml', 'personas/atlas.md', 'baseline/cordis.patch.yml', 'LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']; const miss = need.filter((s) => !t.includes(s)); if (miss.length) { console.error('missing from the tarball', miss); process.exit(1) } const forbid = ['test/.probe-machine-path.txt', 'cordis.local.patch.yml', '.dsh-verify/']; const bad = forbid.filter((s) => t.includes(s)); if (bad.length) { console.error('must not ship', bad); process.exit(1) } console.log('the tarball carries all eight asserted entries and none of the three forbidden ones')"
+          npm pack --dry-run --json > "$RUNNER_TEMP/pack.json" 2>"$RUNNER_TEMP/pack.err"
+          git ls-files > "$RUNNER_TEMP/tracked.txt"
+          node -e "const fs = require('fs'); const tmp = process.env.RUNNER_TEMP; const packed = JSON.parse(fs.readFileSync(tmp + '/pack.json', 'utf8'))[0].files.map((f) => f.path); const tracked = new Set(fs.readFileSync(tmp + '/tracked.txt', 'utf8').split('\n').map((s) => s.trim()).filter(Boolean)); const need = ['plan-aware-persona.mjs', 'index.js', 'cordis.patch.yml', 'personas/atlas.md', 'baseline/cordis.patch.yml', 'LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']; const miss = need.filter((s) => !packed.includes(s)); if (miss.length) { console.error('missing from the tarball', miss); process.exit(1) } const untracked = packed.filter((p) => !tracked.has(p)); if (untracked.length) { console.error('packed but not tracked', untracked); process.exit(1) } const forbid = packed.filter((p) => p === 'cordis.local.patch.yml' || p === 'test/.probe-machine-path.txt' || p.startsWith('.dsh-verify/') || p.startsWith('.dsh/')); if (forbid.length) { console.error('must not ship', forbid); process.exit(1) } console.log('the tarball carries all eight asserted entries, ' + packed.length + ' paths, every one tracked, and none forbidden')"

@@ -10,21 +10,24 @@
  *
  * The fixture is synthesized here rather than pointed at that directory, so the
  * test names no machine path and stays meaningful on any machine. It is written
- * under `test/.tmp/`, which is ignored, and removed by the test itself.
+ * **outside the repository**, under the system temporary directory, and removed by
+ * the test itself: a fixture inside a directory that `files[]` lists would be
+ * shipped by `npm pack`, which is exactly what the package check now refuses.
  */
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, rmdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..')
 const TOOL = join(ROOT, 'tools', 'verify-patch.mjs')
 // A subdirectory of its own, so that test files running in parallel processes
 // cannot delete each other's fixtures.
-const TMP = join(import.meta.dirname, '.tmp', 'zero-byte')
-const SHARED_TMP = join(import.meta.dirname, '.tmp')
+const SHARED_TMP = join(tmpdir(), 'omo-chs-qa')
+const TMP = join(SHARED_TMP, 'zero-byte')
 const FIXTURE = join(TMP, 'all-nul.patch.yml')
 
 /** Run the verifier with `--legacy` pointed at the given file. */
@@ -43,9 +46,9 @@ function runVerify(legacyPath) {
 
 test.after(() => {
   rmSync(TMP, { recursive: true, force: true })
-  // Remove the shared parent too when it is empty, so `test/.tmp/` is left with
-  // nothing in it. Whichever test file finishes last wins the race; the other's
-  // attempt fails harmlessly because the directory is not empty yet.
+  // Remove the shared parent too when it is empty, so the temporary directory is
+  // left with nothing in it. Whichever test file finishes last wins the race; the
+  // other's attempt fails harmlessly because the directory is not empty yet.
   try {
     rmdirSync(SHARED_TMP)
   } catch {
