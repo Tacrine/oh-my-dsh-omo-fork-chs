@@ -1,0 +1,106 @@
+# Release workflow: publish from a version tag, but only when that version is
+# not already on the registry.
+#
+# The preflight exists because the first release is published by hand and the tag
+# is pushed afterwards, so this workflow fires against a version that already
+# exists. Without the guard it would attempt a duplicate publish, fail, and make
+# "the latest run is success" impossible to satisfy.
+#
+# The preflight fails CLOSED: it writes `exists=false` only when the registry
+# query succeeded and returned no version. Any failure of that query - a network
+# blip, a registry 5xx, rate limiting - is reported as `exists=true` with the
+# reason in the log, so an uncertain answer skips the publish instead of risking
+# a duplicate one. Reading a failed query as "not published" would turn a
+# registry problem into a red release run.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: publish the tagged version
+    runs-on: ubuntu-latest
+    env:
+      # Read by verify-patch.mjs itself rather than passed as a --runtime flag,
+      # because Windows npm runs scripts through cmd.exe while POSIX shells
+      # expand variables.
+      DSH_RUNTIME: ${{ github.workspace }}/.dsh-verify/node_modules
+      # The fingerprint route pins the expected upstream hash without shipping
+      # the upstream file. Pointing the file variable at the checked-out copy of
+      # our own licence would compare that file with itself.
+      OMO_UPSTREAM_LICENSE_SHA256: B61AC928F152D13517328263E6BEE9175B928F9AB696A2D2CA2B6CFD961DDC32
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # `--legacy-peer-deps` skips peer installation, so the include plugin's own
+      # peers have to be named explicitly or the verifier cannot import it:
+      # `@deepseek-ai/cordis-plugin-include` needs `@deepseek-ai/cordis-plugin-loader`,
+      # and that loader needs `@deepseek-ai/cordis`. js-yaml is pinned to ^4.1.0
+      # because the verifier imports `js-yaml/dist/js-yaml.mjs`, a v4 path.
+      - name: Install the verification runtime
+        run: npm install --prefix .dsh-verify --no-package-lock --legacy-peer-deps js-yaml@^4.1.0 @deepseek-ai/cordis-plugin-include@^1.0.9 @deepseek-ai/cordis-plugin-loader@~1.0.5 @deepseek-ai/cordis@~4.0.4
+
+      - name: Run the test suite
+        run: npm test
+
+      - name: Run the zero-dependency package check
+        run: node tools/check-package.mjs
+
+      - name: Compare the published patch against the frozen baseline
+        run: node tools/verify-patch.mjs --legacy baseline/cordis.patch.yml --runtime "${{ github.workspace }}/.dsh-verify/node_modules"
+
+      - name: Check whether this version is already on npm
+        id: preflight
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "tag ${GITHUB_REF_NAME} names version ${version}"
+          set +e
+          found="$(npm view "@tacrine_f/oh-my-dsh-omo-fork-chs@${version}" version --registry https://registry.npmjs.org/ 2>"$RUNNER_TEMP/preflight.err")"
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            if [ -z "$(printf '%s' "$found" | tr -d '[:space:]')" ]; then
+              echo "the registry answered but named no version for ${version}; the publish step will run"
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "the registry already carries ${found}; skipping the publish"
+              echo "exists=true" >> "$GITHUB_OUTPUT"
+            fi
+            exit 0
+          fi
+          # A non-zero status means the registry did not simply answer with a
+          # version. It is read as "absent" only when npm reports E404, which is
+          # the registry stating definitively that it holds no such package or
+          # version - the ordinary case for a version that has never been
+          # published. Every other failure, a network blip, a 5xx or rate
+          # limiting, is uncertain, and an uncertain answer skips the publish
+          # rather than risking a duplicate one.
+          if grep -q 'E404' "$RUNNER_TEMP/preflight.err"; then
+            echo "the registry answered 404 for ${version}; the version is absent, so the publish step will run"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "the registry query failed with status ${status} without answering 404, so version ${version} is being treated as already present and the publish is skipped; an uncertain answer must not trigger a duplicate publish"
+          echo "the query's stderr was:"
+          sed 's/^/  /' "$RUNNER_TEMP/preflight.err" || true
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        if: steps.preflight.outputs.exists == 'false'
+        run: npm publish --access public --registry https://registry.npmjs.org/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
