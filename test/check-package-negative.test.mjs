@@ -21,17 +21,21 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 const ROOT = join(import.meta.dirname, '..')
 const TOOL = join(ROOT, 'tools', 'check-package.mjs')
-// A subdirectory of its own, so that test files running in parallel processes
-// cannot delete each other's fixtures.
-const SHARED_TMP = join(tmpdir(), 'omo-chs-qa')
-const TMP = join(SHARED_TMP, 'check-package')
+// A directory of this file's own, created by `mkdtempSync` so that no other test
+// file can delete it. `node --test` runs each file in its own process,
+// concurrently, so a *shared* parent that both files removed in `after()` coupled
+// two running processes: whichever finished first could remove a directory the
+// other was still writing fixtures into, and the sibling's next `writeFileSync`
+// then raised ENOENT. A private directory makes that interleaving impossible
+// rather than merely unlikely.
+const TMP = mkdtempSync(join(tmpdir(), 'omo-chs-qa-check-package-'))
 
 /** SHA256 of a file's bytes, so a fixture can prove it differs from its source. */
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex')
@@ -72,15 +76,9 @@ test.before(() => {
 })
 
 test.after(() => {
+  // The directory is this file's own, so removing it is the whole cleanup: there is
+  // no shared parent to hand back and nothing outside this path to touch.
   rmSync(TMP, { recursive: true, force: true })
-  // Remove the shared parent too when it is empty, so the temporary directory is
-  // left with nothing in it. Whichever test file finishes last wins the race; the
-  // other's attempt fails harmlessly because the directory is not empty yet.
-  try {
-    rmdirSync(SHARED_TMP)
-  } catch {
-    // Still populated by a sibling test file, which will remove it in turn.
-  }
 })
 
 test('a patch whose anchor names a missing persona file fails, naming that file', () => {
