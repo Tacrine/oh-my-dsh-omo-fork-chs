@@ -41,6 +41,18 @@ The changes made to the upstream content, relative to upstream commit
    manifest, and tools that generate and verify the patch.
 7. **`index.js` and `plan-aware-persona.mjs` were copied unchanged** from the bundle this
    fork was derived from. They carry no translation and no functional change.
+8. **The vendored persona prose carries machine-local paths.** Ten lines across three persona
+   documents name absolute paths from the machine the localization work was done on: one
+   illustrative Windows temporary-directory example, and nine invocations of a local helper
+   script that lives under the harness home directory. Those lines do violate this
+   repository's rule that no committed file names a machine absolute path. They are tolerated
+   anyway, because byte identity with the source bundle is a harder constraint that this
+   repository also imposes: sanitizing them would change the persona bytes and break the
+   identity that the content-fidelity check and the final bundle audit both re-assert. The
+   affected lines are enumerated, with their line numbers, in `tools/check-package.mjs`,
+   whose machine-path scan accepts a match only at one of those exact positions and fails on
+   any other. The paths are not reproduced here because this document is itself covered by
+   that scan.
 
 No upstream licensing, copyright, or other notice was altered, removed, or obscured by
 these modifications. The persona documents and the two copied modules contain no license or
