@@ -1,0 +1,540 @@
+# Oh My DSH Chs - OMO Fork: `omo-fork-chs` agent preset.
+# A Chinese translation fork of the `tri-agent` preset. The `plugins:` body below is
+# copied verbatim from .dsh/tools/tri-agent-bundle/cordis.patch.yml with exactly these
+# substitutions: the package self-reference and the 9 persona path anchors were re-pointed
+# to @local/dsh-preset-omo-fork-chs; the preset id became omo-fork-chs; the display name
+# became 'Oh My DSH Chs - OMO Fork'; order became 11; the description was rewritten in
+# Chinese; the machine-specific multimodal agentOptions route was removed.
+- insert:
+    - id: preset-omo-fork-chs
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-fork-chs
+        name: 'Oh My DSH Chs - OMO Fork'
+        description: |-
+          Oh My DSH Chs - OMO Fork：tri-agent 预设的简体中文翻译分支。除移除 machine-specific 的
+          multimodal agentOptions 路由外，行为与 tri-agent 一致——Atlas 纯指挥，不亲自实现/验证/审查；
+          Prometheus 作 /plan 的规划 doctrine；审查链 metis+momus 双审，必要时 +oracle 三精度；
+          具名子代理加载对应人设。仅人设正文译为中文；与原预设并存，id 为 omo-fork-chs，order 11，
+          不改变默认预设，也不改变默认选择。
+        order: 11
+        plugins:
+          # The `standard` agent preset: the full coding agent, mounted once per process.
+          #
+          # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
+          # standing scope; every session naming it joins by scope parentage, so the
+          # tools and prompt sections registered here cover each joined agent while a
+          # session's own state stays keyed per Session/Agent inside the plugins. The
+          # host composition (`base.cordis.yml` + `web.cordis.yml`) keeps everything a
+          # preset must not own: the registries themselves, the sandbox and approval
+          # stack, persistence, and the model route.
+          #
+          # A service row here MUST sit inside a group carrying an `isolate` realm.
+          # Without one it publishes into the root realm, where it is process-global —
+          # another preset publishing the same name collides, and a host reader would
+          # resolve one preset's instance for every session; `dsh-agent-presets` rejects
+          # that at mount. `true` means an entry-local realm: this standing mount's own
+          # private instance, apart from every other preset's. (A shared label does NOT
+          # pool instances — `provide()` throws on the second registration under the
+          # same realm symbol; labels join REALMS, and are not what this file needs.)
+
+          # ── identity ────────────────────────────────────────────────────────────────
+
+          # The preset's own persona, shadowing the deployment default for this agent.
+          # `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
+          # Plan-aware identity: Atlas normally, Prometheus while /plan is active.
+          # This row REPLACES the legacy persona plugin registration so that exactly one
+          # `deployment:` persona-prefix registration exists in this agent scope.
+          - id: persona
+            name: '@local/dsh-preset-omo-fork-chs/persona'
+            config:
+              suffix: Your working directory is {{cwd}}.
+
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+
+          # ── shell ───────────────────────────────────────────────────────────────────
+
+          # `shell-env` stays in the HOST composition: `apps/cli/src/web.ts` injects it to
+          # publish `DSH_WEB_URL`/`DSH_WEB_MODE`, and a host row that injects a service is
+          # the criterion for host-plane ownership — injection resolves before any session
+          # exists, so there is no agent to key by. Behind a preset realm those variables
+          # never reached the model's shell at all. Both shell tools consume the host
+          # registry from here; their executors (`bash-sandbox`/`pwsh-sandbox`) are
+          # host-plane too.
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+
+          # ── filesystem ──────────────────────────────────────────────────────────────
+
+          # Both register into the host `tools` registry and provide nothing, so
+          # they need no realm. The `fs` service and its policy stay in the host.
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+
+          # ── background jobs ────────────────────────────────────────────────────────
+
+          # Only the model-facing controls. The task REGISTRY stays on the host plane:
+          # its producers sit outside any realm this file could put it in — `tool-bash`
+          # above resolves it with `ctx.get`, and an entry-local realm here is invisible
+          # to every sibling row, so `run_in_background` would answer "background jobs
+          # unavailable" while these controls sat in the catalog. The registry is keyed by
+          # owning agent anyway, so one host instance serves every session. What a preset
+          # chooses is whether its agent can collect and stop background work at all.
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+
+          # ── skills ──────────────────────────────────────────────────────────────────
+
+          # The skill REGISTRY lives in the host composition and is layered per scope:
+          # these rows register into THIS preset's layer of it, so they need no realm.
+          # `skill-filesystem` contributes local-root discovery for agents on this preset, and
+          # `tool-skill` gives them the catalog and loader; the merged catalog also
+          # carries whatever the deployment registered globally (repository plugins).
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+
+          # ── goals ───────────────────────────────────────────────────────────────────
+
+          # The goal service and session driver stay on the host plane, where the Gateway
+          # can resolve them. The human command and model-facing tool register into this
+          # preset's scoped layers.
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+
+          # ── plan mode ───────────────────────────────────────────────────────────────
+
+          # Plan state is per-agent by nature, so an entry-local realm is not a
+          # workaround here — it is the correct lifetime.
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |-
+                    You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode.
+
+                    Plan-mode mechanics (the planning doctrine itself lives in your persona):
+
+                    - The tool catalog stays the same across modes for request-cache stability. Seeing a tool is never permission to call it.
+                    - Do not use todo_write to track this planning phase; the plan belongs in exit_plan_mode.
+                    - Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer.
+                    - When the plan is decision-complete, call exit_plan_mode with the complete plan markdown starting with a `#` title. Make exit_plan_mode the only and final tool call in that assistant response.
+                    - Do not paste the final plan as a plain reply, and do not ask "should I proceed?" through prose or ask_user_question.
+                    - If review rejects the plan, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually.
+                    - This mode never authorizes implementation. Implementation starts only in a separate worker session that the user starts after approving the plan.
+
+
+          # ── compaction ──────────────────────────────────────────────────────────────
+
+          # `compaction-basic` reads `toolResultPrune` through `ctx.get`, so the pruner must
+          # share this realm rather than sit outside it.
+          #
+          # `tokenMeter` is deliberately NOT in this realm: the meter stays on the HOST
+          # plane, and the rows here resolve that one instance. It takes no configuration,
+          # keys every fold by Session, and owns the context-meter projection units the
+          # browser reads for every session — behind a realm those units would come and go
+          # with whichever presets happen to be mounted. What a preset chooses is whether
+          # its agent compacts at all, which is `compaction-basic` below.
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+          # ── delegation and workflows ────────────────────────────────────────────────
+
+          # The `subagents` registry and its spawn/fork backends live in the HOST
+          # composition: the registry is a process singleton whose cross-session queries
+          # the api-proxy serves to the browser, and a provider name may only be
+          # registered once. This preset contributes the delegation TOOLS, which resolve
+          # that host registry.
+          #
+          # `workflows` is different — nothing outside an agent reads it — so every row
+          # that reaches it shares one entry-local realm here, and a consumer left
+          # outside would resolve a host registry this preset does not populate.
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+
+              # Fork omits model selection so provider/model stay equal to the parent and
+              # the inherited history remains eligible for KV Cache reuse. This preset
+              # keeps fork continuable; parent and child inherit the same messaging tool,
+              # while the parent id and return guidance follow the inherited history.
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+                  backgroundMode: continuable
+
+              - id: tool-subagent-explore
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_explore
+                  backgroundMode: continuable
+                  maxDepth: 1
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/explore.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - write
+                      - edit
+                      - todo_write
+                      - present
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - subagent_explore
+                      - subagent_librarian
+                      - subagent_oracle
+                      - subagent_momus
+                      - subagent_multimodal_looker
+                      - subagent_sisyphus_junior
+                      - subagent_metis
+                      - subagent_hephaestus
+
+              - id: tool-subagent-librarian
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_librarian
+                  backgroundMode: continuable
+                  maxDepth: 1
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/librarian.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - write
+                      - edit
+                      - todo_write
+                      - present
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - subagent_explore
+                      - subagent_librarian
+                      - subagent_oracle
+                      - subagent_momus
+                      - subagent_multimodal_looker
+                      - subagent_sisyphus_junior
+                      - subagent_metis
+                      - subagent_hephaestus
+
+              - id: tool-subagent-oracle
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_oracle
+                  backgroundMode: continuable
+                  maxDepth: 1
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/oracle.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - write
+                      - edit
+                      - todo_write
+                      - present
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - subagent_explore
+                      - subagent_librarian
+                      - subagent_oracle
+                      - subagent_momus
+                      - subagent_multimodal_looker
+                      - subagent_sisyphus_junior
+                      - subagent_metis
+                      - subagent_hephaestus
+
+              - id: tool-subagent-momus
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_momus
+                  backgroundMode: continuable
+                  maxDepth: 1
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/momus.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - write
+                      - edit
+                      - todo_write
+                      - present
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - subagent_explore
+                      - subagent_librarian
+                      - subagent_oracle
+                      - subagent_momus
+                      - subagent_multimodal_looker
+                      - subagent_sisyphus_junior
+                      - subagent_metis
+                      - subagent_hephaestus
+
+              - id: tool-subagent-multimodal-looker
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_multimodal_looker
+                  backgroundMode: continuable
+                  maxDepth: 1
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/multimodal-looker.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    allow:
+                      - read
+                      - read_image
+
+              - id: tool-subagent-sisyphus-junior
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_sisyphus_junior
+                  backgroundMode: continuable
+                  maxDepth: 1
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/sisyphus-junior.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - subagent_explore
+                      - subagent_librarian
+                      - subagent_oracle
+                      - subagent_momus
+                      - subagent_multimodal_looker
+                      - subagent_sisyphus_junior
+                      - subagent_metis
+                      - subagent_hephaestus
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+
+              - id: tool-subagent-metis
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_metis
+                  backgroundMode: continuable
+                  maxDepth: 3
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/metis.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - write
+                      - edit
+                      - todo_write
+                      - present
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - subagent_oracle
+                      - subagent_momus
+                      - subagent_multimodal_looker
+                      - subagent_sisyphus_junior
+                      - subagent_metis
+                      - subagent_hephaestus
+
+              - id: tool-subagent-hephaestus
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_hephaestus
+                  backgroundMode: continuable
+                  maxDepth: 3
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/hephaestus.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - subagent_momus
+                      - subagent_multimodal_looker
+                      - subagent_sisyphus_junior
+                      - subagent_metis
+                      - subagent_hephaestus
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+
+              # Sisyphus 执行者：与通用 subagent 并存，子代理身份为 Sisyphus（sidecar personas/sisyphus.md）。
+              # continuable 与通用 subagent 一致。
+              - id: tool-subagent-sisyphus
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent_sisyphus
+                  backgroundMode: continuable
+                  maxDepth: 3
+                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:url').fileURLToPath(new URL('./node_modules/@local/dsh-preset-omo-fork-chs/personas/sisyphus.md', baseUrl)), 'utf8')
+                  toolFilter:
+                    deny:
+                      - subagent_fork
+                      - subagent_sisyphus
+                      - ralph
+                      - workflow
+                      - run_workflow
+                      - workflow_list
+                      - workflow_manage
+                      - ask_user_question
+                      - create_goal
+                      - get_goal
+                      - update_goal
+                      - exit_plan_mode
+
+              # Production dsh does not install these optional providers. Install the
+              # matching Bundle in this Profile and restart the Host, then copy this
+              # preset and remove `disabled` from the matching tool row. Host availability
+              # alone grants no tool.
+              - id: tool-subagent-codex
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: codex
+                  toolName: subagent_codex
+                  backgroundMode: one-shot
+                  maxDepth: provider-managed
+
+              - id: tool-subagent-claude-code
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: claude-code
+                  toolName: subagent_claude_code
+                  backgroundMode: one-shot
+                  maxDepth: provider-managed
+
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+
+              - id: tool-ralph
+                name: '@deepseek-ai/dsh-tool-ralph'
+                config:
+                  subagentProvider: spawn
+                  maxRounds: 64
+
+          # ── remaining model-facing rows ─────────────────────────────────────────────
+
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+
+          # The `web` service and its search provider stay in the host composition; only
+          # the model-facing tool is per-session.
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'

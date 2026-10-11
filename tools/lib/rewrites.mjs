@@ -86,6 +86,42 @@ export const personaExpression = (packageName, file) =>
   "process.getBuiltinModule('node:module').createRequire(baseUrl)" +
   `.resolve('${packageName}/package.json')), 'personas', '${file}')`
 
+/**
+ * Build the pre-port `!!js` expression for one persona file.
+ *
+ * This is the exact string `personaExpression` replaces, produced from the same
+ * `LOCAL_PACKAGE` literal rather than retyped, so the inverse rule cannot drift
+ * from the forward one.
+ *
+ * @param file - the persona document's file name, including its extension.
+ */
+export const localPersonaExpression = (file) =>
+  "process.getBuiltinModule('node:url').fileURLToPath(" +
+  `new URL('./node_modules/${LOCAL_PACKAGE}/personas/${file}', baseUrl))`
+
+/** Escape a literal for use inside a regular expression. */
+const escapeLiteral = (literal) => literal.replace(/[.*+?^${}()|[\]\\/]/g, (c) => `\\${c}`)
+
+/**
+ * The inverse of the persona anchor: matches the *rewritten* expression and
+ * captures the package name and the persona file name, so the pre-port
+ * expression can be rebuilt.
+ *
+ * This regex is a transcription of `personaExpression` with its two variables
+ * turned into capture groups. The two are kept in step by `inverseProblems`
+ * below, which asserts that re-applying the forward rules to the inverse output
+ * reproduces the input exactly — so a transcription slip fails loudly instead of
+ * silently producing a wrong baseline.
+ */
+const PERSONA_ANCHOR_INVERSE =
+  /process\.getBuiltinModule\('node:path'\)\.join\(process\.getBuiltinModule\('node:path'\)\.dirname\(process\.getBuiltinModule\('node:module'\)\.createRequire\(baseUrl\)\.resolve\('([^']+)\/package\.json'\)\), 'personas', '([^']+)'\)/g
+
+/** The inverse of the self-reference row, anchored on the `name:` key. */
+const SELF_REFERENCE_INVERSE = /name:[ \t]*'([^']+)\/persona'/g
+
+/** The inverse of the header comment rule: any remaining published-package mention. */
+const commentReferenceInverse = (packageName) => new RegExp(escapeLiteral(packageName), 'g')
+
 /** 1-based line number of the given character offset in `text`. */
 const lineOf = (text, offset) => text.slice(0, offset).split('\n').length
 
@@ -128,6 +164,75 @@ export function applyRewrites(text, packageName) {
 
   sites.sort((a, b) => a.line - b.line)
   return { text: out, counts, sites }
+}
+
+/**
+ * Apply the inverse of the three rewrites, in the inverse order, to recover the
+ * pre-port patch text from a published one.
+ *
+ * This is what makes `baseline/cordis.patch.yml` derivable rather than
+ * transcribed: the baseline is a frozen copy of the bundle's patch, and it is
+ * checked into the repository so the round trip is verifiable in a clean clone
+ * without depending on any machine-local directory.
+ *
+ * The result is verified by re-applying the forward rules and comparing against
+ * the input, so a slip in the inverse patterns throws here instead of silently
+ * producing a baseline that differs from the source.
+ *
+ * @param text - the published patch text.
+ * @param packageName - the published package name.
+ * @returns the pre-port text and the counts per inverse rule.
+ */
+export function applyInverseRewrites(text, packageName) {
+  const counts = { name: 0, persona: 0, comment: 0 }
+
+  let out = text.replace(PERSONA_ANCHOR_INVERSE, (_match, name, file) => {
+    counts.persona += 1
+    return localPersonaExpression(file)
+  })
+
+  out = out.replace(SELF_REFERENCE_INVERSE, (_match, name) => {
+    counts.name += 1
+    return `name: '${LOCAL_PACKAGE}/persona'`
+  })
+
+  out = out.replace(commentReferenceInverse(packageName), () => {
+    counts.comment += 1
+    return LOCAL_PACKAGE
+  })
+
+  const roundTrip = applyRewrites(out, packageName)
+  if (roundTrip.text !== text) {
+    throw new Error(
+      'the inverse rewrites do not round-trip: re-applying the forward rules to the derived text did not ' +
+        'reproduce the input, so the inverse patterns have drifted from the forward ones in tools/lib/rewrites.mjs',
+    )
+  }
+
+  return { text: out, counts }
+}
+
+/**
+ * The assertions the derived baseline must satisfy. Returned as a list of
+ * messages, mirroring `productProblems` so the caller can throw with all the
+ * problems at once.
+ *
+ * @param text - the derived baseline text.
+ * @param counts - the counts returned by `applyInverseRewrites`.
+ */
+export function baselineProblems(text, counts) {
+  const problems = []
+  const occurrences = (needle) => text.split(needle).length - 1
+  if (counts.name !== 1) problems.push(`expected exactly one self-reference row to invert, inverted ${counts.name}`)
+  if (counts.persona !== 9) problems.push(`expected exactly 9 persona anchors to invert, inverted ${counts.persona}`)
+  if (counts.comment !== 1) problems.push(`expected exactly one header comment occurrence to invert, inverted ${counts.comment}`)
+  const selfReference = `name: '${LOCAL_PACKAGE}/persona'`
+  if (occurrences(selfReference) !== 1) problems.push(`expected exactly one "${selfReference}" row, found ${occurrences(selfReference)}`)
+  if (occurrences(`'./node_modules/${LOCAL_PACKAGE}/personas/`) !== 9) {
+    problems.push(`expected 9 pre-port persona anchors, found ${occurrences(`'./node_modules/${LOCAL_PACKAGE}/personas/`)}`)
+  }
+  if (occurrences(LOCAL_PACKAGE) !== 11) problems.push(`expected 11 "${LOCAL_PACKAGE}" occurrences in total, found ${occurrences(LOCAL_PACKAGE)}`)
+  return problems
 }
 
 /**

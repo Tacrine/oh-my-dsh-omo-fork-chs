@@ -15,10 +15,15 @@
  *
  * That check is self-consistent by construction — the expected text is derived by
  * the same rules that produced the artifact — so it cannot prove the rules
- * themselves are right. Todo 8 therefore records a second, independent piece of
- * evidence: `git diff --no-index -U0` between the source patch and the product
- * must yield exactly 11 hunks, each one removal and one addition. Neither piece
- * is sufficient alone and neither is treated as such.
+ * themselves are right. A second, independent piece of evidence is therefore
+ * recorded alongside it: `git diff --no-index -U0` between the source patch and
+ * the product must yield exactly 11 hunks, each one removal and one addition.
+ * Neither piece is sufficient alone and neither is treated as such.
+ *
+ * The source the expected text comes from defaults to this repository's committed
+ * `baseline/cordis.patch.yml`, which is byte-identical to the bundle's patch, so a
+ * bare run works in a clean clone with no machine-local input. `--legacy` or
+ * `--src` override it when a different source is under test.
  *
  * The YAML level, when it runs, is the stronger check: both documents are parsed
  * with the real entry-list dialect and compared structurally, with every `__jsExpr`
@@ -180,20 +185,16 @@ async function main() {
   assertTextIsHealthy(PATCH, patchHealth)
 
   /**
-   * Where the expected text comes from: `--src` names a directory holding the
-   * source patch, `--legacy` names the file directly, and `--legacy` wins when
-   * both are given so the more specific flag decides.
+   * Where the expected text comes from, in order of specificity: `--legacy` names
+   * the file directly and wins when given, `--src` names a directory holding it,
+   * and with neither the repository's own frozen baseline is used. The baseline
+   * is committed, so a bare run works in a clean clone with no machine-local
+   * input — that is the whole reason it exists.
    */
   let legacySource
   if (flags.legacy !== undefined) legacySource = flags.legacy
   else if (flags.src !== undefined) legacySource = join(flags.src, 'cordis.patch.yml')
-  if (legacySource === undefined) {
-    throw new Error(
-      'no source to derive the expected text from: pass --legacy <source patch> (or --src <dir>). ' +
-        'The default source is this repository\'s baseline/cordis.patch.yml, which does not exist yet; ' +
-        'pass the bundle patch or the baseline explicitly until it does.',
-    )
-  }
+  else legacySource = join(import.meta.dirname, '..', 'baseline', 'cordis.patch.yml')
 
   const legacyHealth = readTextWithHealth(legacySource)
   assertTextIsHealthy(legacySource, legacyHealth)
