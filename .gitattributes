@@ -1,0 +1,15 @@
+# Pin the line endings every checkout writes.
+#
+# This repository's correctness rests on byte identity: the thirteen vendored
+# files are byte-identical to the read-only source bundle, and assertion A6 reads
+# the working tree's byte counts because the working tree is what `npm pack`
+# ships. Without this file, `git clone` on a machine whose `core.autocrlf` is true
+# writes CRLF into the working tree, so the working tree stops equalling the blob
+# and A6 fails for all eleven personas even though the committed content is
+# correct. That is exactly what happened in CI run 38147882051, where both
+# ubuntu jobs passed and both windows jobs failed at the test suite.
+#
+# `text=auto eol=lf` makes the checkout faithful everywhere: the working tree
+# equals the blob on every platform and under every `core.autocrlf` setting, which
+# is the stronger guarantee and leaves A6 checking the property it names.
+* text=auto eol=lf

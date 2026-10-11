@@ -706,7 +706,7 @@ function main() {
   // cover a real file inside them.
   const EXPECTED_SCOPE = {
     sul: ['personas/', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'baseline/cordis.patch.yml'],
-    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', '.gitignore', 'README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md'],
+    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', '.gitignore', '.gitattributes', 'README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md'],
   }
   const SUL_ANCHORS = ['baseline/cordis.patch.yml', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'personas/atlas.md']
   const MIT_ANCHORS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', 'baseline/README.md', 'NOTICE.md']

@@ -101,6 +101,7 @@ test/
 baseline/README.md
 package.json
 .gitignore
+.gitattributes
 README.md
 README.zh.md
 CHANGELOG.md
