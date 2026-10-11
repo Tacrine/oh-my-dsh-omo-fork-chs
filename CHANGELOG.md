@@ -6,11 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] — 2026-10-11
 
-First release of this repository (never published to npm): the package
-`@tacrine_f/oh-my-dsh-omo-fork-chs`, the `tri-agent` agent preset (Atlas orchestration plus
-Prometheus planning) as a Simplified-Chinese fork, packaged for DeepSeek Harness as a Cordis bundle. The preset id is `omo-fork-chs` and its `order` is `11`, so it sits beside
-`tri-agent` and does not change the default preset. No npm artifact has been published for this
-repository yet, so there is nothing to remediate retroactively.
+0.1.0 is the first release of this repository; no earlier version was published. It carries the
+package `@tacrine_f/oh-my-dsh-omo-fork-chs`, the `tri-agent` agent preset (Atlas orchestration plus
+Prometheus planning) as a Simplified-Chinese fork, packaged for DeepSeek Harness as a Cordis bundle.
+The preset id is `omo-fork-chs` and its `order` is `11`, so it sits beside
+`tri-agent` and does not change the default preset. Having no predecessor on npm, it has no older
+artifact to compare against and no upgrade path from one.
 
 ### Added
 

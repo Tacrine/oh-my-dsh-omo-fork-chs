@@ -64,7 +64,7 @@
     "test": "node --test",
     "check": "node tools/check-package.mjs && node tools/verify-patch.mjs",
     "check:full": "node tools/verify-patch.mjs",
-    "setup:verify": "npm install --prefix .dsh-verify --no-package-lock --legacy-peer-deps js-yaml@^4.1.0 @deepseek-ai/cordis-plugin-include@^1.0.9",
+    "setup:verify": "npm install --prefix .dsh-verify --no-package-lock --legacy-peer-deps js-yaml@^4.1.0 @deepseek-ai/cordis-plugin-include@^1.0.9 @deepseek-ai/cordis-plugin-loader@~1.0.5 @deepseek-ai/cordis@~4.0.4",
     "prepack": "node tools/check-package.mjs --quiet"
   },
   "engines": {

@@ -205,10 +205,12 @@ What each one proves:
   zero-byte guard, and the package check's negative paths. It is 55 tests and it needs nothing
   installed.
 - **`npm run check`** is `node tools/check-package.mjs && node tools/verify-patch.mjs`. The first
-  runs 16 structural and license assertions (manifest identity, the four `exports`, the single
+  runs 17 structural and license assertions (manifest identity, the four `exports`, the single
   self-reference row, the nine persona anchors and their files, the `files[]` coverage, the eleven
-  persona byte counts, the license pointers, the three license documents, the upstream fingerprint
-  when one is supplied, the modification-notice claims, the license scope mapping, the machine-path
+  persona byte counts, the license pointers, the three license documents, the paths that must never
+  ship, the upstream fingerprint
+  when one is supplied, the modification-notice claims, the license scope mapping and the anchors
+  that pin each scope block to the content it claims, the machine-path
   scan and the classes that govern where the pre-port package name may appear, and the patch's
   shape). The second proves the published patch
   still equals what the three documented rewrites compute from the frozen baseline, and reports
@@ -232,11 +234,14 @@ What each one proves:
   machine-local directory; the error message names the baseline directory as the alternative
   source, and `npm run port -- --src baseline` reproduces the committed patch byte for byte.
 
-> **`npm run check` must run inside a git checkout.** Three of its assertions (the license scope
+> **`npm run check` and `npm test` must run inside a git checkout.** Three of the package check's
+> assertions (the license scope
 > mapping, the machine-path scan, and the classes that govern where the pre-port package name may
 > appear) are defined over the set of **tracked**
 > files, so the tool asks `git ls-files` for that set. If git cannot answer, the tool fails with
-> `run inside a git checkout` rather than silently skipping those three. A consumer who unpacks the
+> `run inside a git checkout` rather than silently skipping those three. `npm test` needs the same
+> checkout for the same reason: its last case runs the package check against the real tree, so
+> unpacking the tarball outside a repository fails there too. A consumer who unpacks the
 > published tarball outside a repository will therefore see that error, and it is deliberate: a
 > mapping check that reports success for work it never did is worse than no check at all. The
 > published package includes the tools and the test suite so the chain can be re-run from a clone.
@@ -316,8 +321,9 @@ Upstream names and trademarks belong to their owners.
   repository with its own package, its own preset id and its own scope mapping. Neither repository
   affects the other: they share the upstream lineage, and nothing in this package reads, writes or
   depends on the other one.
-- **Nothing here has been published yet at the time of writing.** This repository carries no release
-  tag, no CI run and no npm artifact of its own until the publish steps are done.
+- **0.1.0 is the first release of this repository; no earlier version was published.** This package
+  has no predecessor on npm, so there is no older artifact to compare against and no upgrade path
+  from one.
 
 ## Lineage
 

@@ -67,7 +67,16 @@ jobs:
         shell: bash
         run: |
           version="${GITHUB_REF_NAME#v}"
-          echo "tag ${GITHUB_REF_NAME} names version ${version}"
+          # The tag names a version, but `npm publish` publishes whatever the
+          # manifest declares, and nothing else in this workflow compares the two.
+          # A mismatch would either publish an untagged version or skip the publish
+          # while the run stayed green, and a publish cannot be undone. Refuse.
+          manifest="$(node -p "require('./package.json').version")"
+          echo "tag ${GITHUB_REF_NAME} names version ${version}; the manifest declares ${manifest}"
+          if [ "$version" != "$manifest" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} names version ${version} but package.json declares ${manifest}; refusing to publish a version the tag does not name"
+            exit 1
+          fi
           set +e
           found="$(npm view "@tacrine_f/oh-my-dsh-omo-fork-chs@${version}" version --registry https://registry.npmjs.org/ 2>"$RUNNER_TEMP/preflight.err")"
           status=$?

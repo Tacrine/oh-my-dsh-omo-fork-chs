@@ -15,7 +15,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { parseArgs as parsePortPatch } from '../tools/port-patch.mjs'
-import { parseArgs as parseVerifyPatch } from '../tools/verify-patch.mjs'
+import { parseArgs as parseVerifyPatch, resolveRuntime } from '../tools/verify-patch.mjs'
 import { parseArgs as parseDeriveBaseline } from '../tools/derive-baseline.mjs'
 import { parseArgs as parseCheckPackage } from '../tools/check-package.mjs'
 
@@ -61,8 +61,23 @@ test('derive-baseline.mjs: the bare --check flag parses without a value', () => 
   assert.deepEqual(parseDeriveBaseline(['--check']), { check: true })
 })
 
-test('verify-patch.mjs: the bare --quiet flag combines with a value flag', () => {
+test('verify-patch.mjs: the bare --quiet flag combines with a value flag, and resolveRuntime resolves the runtime', () => {
   assert.deepEqual(parseVerifyPatch(['--legacy', 'a.yml', '--quiet']), { legacy: 'a.yml', quiet: true })
+
+  // `resolveRuntime` is exported on the stated ground that this suite exercises it
+  // directly rather than only through a spawned tool, so this is the assertion
+  // that keeps that comment true. The environment variable is cleared for the
+  // duration because an inherited `DSH_RUNTIME` would otherwise decide the first
+  // case, which is the environment-sensitivity the suite already had to fix once.
+  const saved = process.env.DSH_RUNTIME
+  delete process.env.DSH_RUNTIME
+  try {
+    assert.equal(resolveRuntime(undefined), undefined, 'with no flag and no environment variable there is no runtime to guess at')
+    assert.equal(resolveRuntime('/somewhere/node_modules'), '/somewhere/node_modules')
+    assert.throws(() => resolveRuntime('relative/node_modules'), /must be an absolute path/)
+  } finally {
+    if (saved !== undefined) process.env.DSH_RUNTIME = saved
+  }
 })
 
 test('importing a tool does not run it', async () => {

@@ -197,7 +197,18 @@ async function main() {
   else if (flags.src !== undefined) legacySource = join(flags.src, 'cordis.patch.yml')
   else legacySource = join(import.meta.dirname, '..', 'baseline', 'cordis.patch.yml')
 
-  const legacyHealth = readTextWithHealth(legacySource)
+  // A missing baseline is the most likely failure of a first run, and the raw
+  // ENOENT it would otherwise raise names neither this tool nor either flag. The
+  // pointer is the point: without it the reader has to find the flag list.
+  let legacyHealth
+  try {
+    legacyHealth = readTextWithHealth(legacySource)
+  } catch (cause) {
+    throw new Error(
+      `cannot read ${legacySource}: ${cause.message}. Pass --legacy <file> to name the pre-port patch ` +
+        'directly, or --src <dir> to name a directory holding cordis.patch.yml.',
+    )
+  }
   assertTextIsHealthy(legacySource, legacyHealth)
 
   const PACKAGE = flags.package ?? packageNameFromManifest()
@@ -241,7 +252,7 @@ async function main() {
     } else {
       if (declaration.id !== EXPECTED_DECLARATION.id) differences.push(`yaml: declaration id is ${declaration.id}, expected ${EXPECTED_DECLARATION.id}`)
       if (declaration.name !== '@deepseek-ai/dsh-agent-preset') differences.push(`yaml: declaration plugin is ${declaration.name}`)
-      if (declaration.config?.id !== undefined && declaration.config.id !== 'omo-fork-chs') {
+      if (declaration.config?.id !== 'omo-fork-chs') {
         differences.push(`yaml: config.id is ${declaration.config.id}, expected omo-fork-chs`)
       }
       if (declaration.config?.name !== EXPECTED_DECLARATION.name) {

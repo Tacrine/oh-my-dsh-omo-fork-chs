@@ -109,6 +109,17 @@ const REQUIRED_FILES = [
 /** The three license documents, and the bare name that must never exist beside them. */
 const LICENSE_DOCUMENTS = ['LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']
 
+/**
+ * Paths that must never reach the tarball, checked against the filesystem rather
+ * than against `git ls-files`, because `npm pack` ships the contents of a listed
+ * directory and does not consult the index or `.gitignore`.
+ *
+ * `test/.probe-machine-path.txt` is the QA fixture the machine-path scan is
+ * exercised with. It is deliberately kept out of `.gitignore` so that a leftover
+ * copy is visible, which is exactly why it needs this assertion instead.
+ */
+const FORBIDDEN_SHIPPED_PATHS = ['test/.probe-machine-path.txt']
+
 /** Strings `NOTICE.md` must carry; each one is a claim the license relies on. */
 const NOTICE_STRINGS = [
   '## Modifications',
@@ -154,6 +165,20 @@ const HARNESS_HOME_MARKER = '/' + 'DSH' + '-X/'
 const MACHINE_PATH = /(?<![A-Za-z0-9+.\-])[A-Za-z]:[\\/]/
 
 /**
+ * The second family of machine-local markers: a POSIX home directory and the
+ * Windows environment-variable shorthand for one. The drive-letter pattern cannot
+ * see either, so without these the scan would be narrower than the claim it
+ * supports. A bare tilde is deliberately not a marker, because it occurs in
+ * ordinary version ranges such as `~1.0.5`; only the tilde-immediately-followed-
+ * by-a-separator form counts, which is why the marker is written as a regex
+ * rather than as a quoted example. The Windows marker is assembled from parts for
+ * the same reason the harness-home marker is: this file is covered by its own
+ * scan.
+ */
+const POSIX_HOME_PATH = /(?:^|[^A-Za-z0-9._-])(?:\/home\/[A-Za-z0-9._-]+\/|\/Users\/[A-Za-z0-9._-]+\/|~\/)/
+const WINDOWS_HOME_MARKER = '%' + 'USERPROFILE' + '%'
+
+/**
  * The only tracked positions where a machine path is tolerated, one entry per
  * known line, and the reason it is there.
  *
@@ -190,8 +215,9 @@ const MACHINE_PATH_ALLOWLIST = [
 /** The number of tolerated positions; asserted so the list cannot grow silently. */
 const MACHINE_PATH_ALLOWLIST_SIZE = 10
 
-/** Does this line carry a machine path, by either marker? */
-const lineHasMachinePath = (line) => MACHINE_PATH.test(line) || line.includes(HARNESS_HOME_MARKER)
+/** Does this line carry a machine path, by any of the markers? */
+const lineHasMachinePath = (line) =>
+  MACHINE_PATH.test(line) || line.includes(HARNESS_HOME_MARKER) || POSIX_HOME_PATH.test(line) || line.includes(WINDOWS_HOME_MARKER)
 
 /**
  * The `@local/` classes, in priority order. A tracked path is assigned to the
@@ -236,12 +262,24 @@ const LOCAL_CLASSES = [
     matches: (path) => path.startsWith('test/') && path.endsWith('.test.mjs'),
   },
   {
+    id: 'baseline-readme',
+    description: "the baseline sidecar README, which is this repository's own text and ships in the tarball",
+    expect: 0,
+    matches: (path) => path === 'baseline/README.md',
+  },
+  {
     id: 'catch-all',
     description: 'every remaining tracked file: reported, not asserted',
     expect: null,
     matches: () => true,
   },
 ]
+
+/** The class ids, in order; asserted so the list cannot be reordered or extended silently. */
+const LOCAL_CLASS_IDS = ['shipped-content', 'baseline', 'notice', 'tests', 'baseline-readme', 'catch-all']
+
+/** The id of the last class, which must be the catch-all. */
+const LOCAL_CLASS_CATCH_ALL_ID = 'catch-all'
 
 /** Parse `--flag value` pairs plus the bare `--quiet`; unknown input is a hard error. */
 export const parseArgs = (argv) => {
@@ -271,6 +309,20 @@ const readText = (path) => {
     return readFileSync(path, 'utf8')
   } catch (cause) {
     throw new Error(`cannot read ${path}: ${cause.message}`)
+  }
+}
+
+/**
+ * Parse the manifest, failing with the path and the flag in the message. A raw
+ * parser error names neither the file nor the option that selects it, and the
+ * manifest is the input a reader is most likely to have edited by hand.
+ */
+function parseManifest(path) {
+  const text = readText(path)
+  try {
+    return JSON.parse(text)
+  } catch (cause) {
+    throw new Error(`cannot parse ${path} as JSON: ${cause.message}. Pass --manifest <file> to name a different manifest.`)
   }
 }
 
@@ -345,7 +397,7 @@ function main() {
   }
 
   const patchText = readText(PATCH)
-  const manifest = JSON.parse(readText(MANIFEST))
+  const manifest = parseManifest(MANIFEST)
   const noticeText = readText(NOTICE)
   const packageName = manifest.name
 
@@ -426,6 +478,24 @@ function main() {
   const bareLicense = join(ROOT, 'LICENSE')
   if (existsSync(bareLicense)) fail('A8', bareLicense, 'a bare LICENSE exists; it would make GitHub badge this SUL-1.0-dominant package as MIT')
   record('A8', ROOT, `license documents: ${LICENSE_DOCUMENTS.join(', ')}`)
+
+  // A8b: the QA probe must not ship. `files[]` covers `test/`, and `npm pack`
+  // packs the contents of a listed directory rather than the tracked set, so a
+  // leftover probe would be published while every other assertion stayed green.
+  // The requirement is recorded in the plan's decisions and nothing enforced it.
+  // The check reads the filesystem on purpose: an untracked file still ships.
+  for (const relative of FORBIDDEN_SHIPPED_PATHS) {
+    const forbiddenPath = join(ROOT, relative)
+    if (existsSync(forbiddenPath)) {
+      fail('A8b', forbiddenPath, 'exists and would ship, because files[] covers its directory; this path must be removed before packing')
+    }
+    // Exact-match only: `files[]` legitimately lists `test/`, which covers the
+    // probe's directory, so a prefix test here would fire on the required entry.
+    if (files.includes(relative)) {
+      fail('A8b', MANIFEST, `files[] names ${JSON.stringify(relative)}, which must never ship`)
+    }
+  }
+  record('A8b', ROOT, `${FORBIDDEN_SHIPPED_PATHS.length} forbidden shipped path(s) absent: ${FORBIDDEN_SHIPPED_PATHS.join(', ')}`)
 
   // A9: the MIT document is a MIT document and carries its scope line.
   const mitPath = join(ROOT, 'LICENSE-MIT.md')
@@ -511,6 +581,26 @@ function main() {
       )
     }
   }
+  // A13 also asserts the mapping is *correct*, not merely exhaustive. Coverage
+  // alone would stay green if the two blocks' contents were swapped, which would
+  // declare upstream SUL-1.0 content to be MIT — a licence claim, not a style
+  // point. `baseline/cordis.patch.yml` is the cheapest anchor because its bytes
+  // are already proven equal to the source patch's, so a mapping that files it
+  // under MIT is wrong by construction; `README.md` is the converse anchor, a
+  // file this repository wrote.
+  const SUL_ANCHORS = ['baseline/cordis.patch.yml', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'personas/atlas.md']
+  const MIT_ANCHORS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs']
+  const blockFor = (id) => scopeBlocks.find((block) => block.id === id)
+  const blockCovers = (block, path) => block.entries.some((entry) => entryMatches(entry, path))
+  for (const path of SUL_ANCHORS) {
+    if (!blockCovers(blockFor('sul'), path)) fail('A13', NOTICE, `${path} is upstream-derived content but the sul-scope block does not cover it`)
+    if (blockCovers(blockFor('mit'), path)) fail('A13', NOTICE, `${path} is upstream-derived content but the mit-scope block claims it`)
+  }
+  for (const path of MIT_ANCHORS) {
+    if (!blockCovers(blockFor('mit'), path)) fail('A13', NOTICE, `${path} is this repository's own content but the mit-scope block does not cover it`)
+    if (blockCovers(blockFor('sul'), path)) fail('A13', NOTICE, `${path} is this repository's own content but the sul-scope block claims it`)
+  }
+  record('A13-scope', NOTICE, `${SUL_ANCHORS.length} sul anchor(s) and ${MIT_ANCHORS.length} mit anchor(s) verified against the block that claims them`)
   record('A13', NOTICE, `${tracked.length} tracked path(s) classified against ${scopeBlocks.length} block(s)`)
 
   // A14: no machine path in any tracked file, including this one, except at the
@@ -548,10 +638,21 @@ function main() {
 
   // A15: the @local/ classes partition the tracked set. Assignment is first-match
   // over a priority-ordered list, so a path cannot land in two classes and cannot
-  // land in none.
+  // land in none. Three things are asserted beyond the per-class counts: the class
+  // list has exactly the declared ids in the declared order, no path matches more
+  // than one specific class (an overlap would silently change which expectation
+  // applies), and the catch-all is last and unique.
+  const classIds = LOCAL_CLASSES.map((candidate) => candidate.id)
+  if (classIds.join(',') !== LOCAL_CLASS_IDS.join(',')) {
+    fail('A15', join(ROOT, 'tools', 'check-package.mjs'), `the class list is [${classIds.join(', ')}], expected [${LOCAL_CLASS_IDS.join(', ')}]`)
+  }
   const localCounts = {}
   for (const path of tracked) {
-    const klass = LOCAL_CLASSES.find((candidate) => candidate.matches(path))
+    const specific = LOCAL_CLASSES.filter((candidate) => candidate.id !== LOCAL_CLASS_CATCH_ALL_ID && candidate.matches(path))
+    if (specific.length > 1) {
+      fail('A15', path, `matches ${specific.length} specific @local/ classes (${specific.map((candidate) => candidate.id).join(', ')}); the specific classes must be disjoint`)
+    }
+    const klass = specific.length === 1 ? specific[0] : LOCAL_CLASSES.find((candidate) => candidate.id === LOCAL_CLASS_CATCH_ALL_ID)
     if (klass === undefined) {
       fail('A15', path, 'belongs to no @local/ class, which means the class list no longer covers the tracked set')
       continue

@@ -123,10 +123,14 @@ function main() {
     const expectedLines = derived.text.split('\n')
     const actualLines = committed.text.split('\n')
     const at = firstDifference(expectedLines, actualLines)
+    // When one file is a strict prefix of the other, the differing index is past
+    // the shorter file's end, so indexing it would print `undefined` and say
+    // nothing. Name that case instead.
+    const describe = (lines) => (at < lines.length ? JSON.stringify(lines[at]) : '<no such line: this file ends earlier>')
     process.stderr.write(
       `baseline drift at ${BASELINE}: the committed file differs from the derivation starting at line ${at + 1}\n` +
-        `  derived  : ${JSON.stringify(expectedLines[at])}\n` +
-        `  committed: ${JSON.stringify(actualLines[at])}\n` +
+        `  derived  : ${describe(expectedLines)}\n` +
+        `  committed: ${describe(actualLines)}\n` +
         `  derived ${expectedLines.length} lines, committed ${actualLines.length} lines\n`,
     )
     process.exitCode = 1

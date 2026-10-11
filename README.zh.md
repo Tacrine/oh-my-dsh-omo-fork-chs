@@ -188,10 +188,12 @@ npm run port -- --src <dir holding cordis.patch.yml>
 
 - **`npm run test`** 运行 `node:test` 套件：三组正向改写、反向改写及其往返、参数解析器、从两侧检验
   机器路径模式、零字节守卫，以及包检查的失败路径。共 55 个测试，不需要安装任何东西。
-- **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。前者运行 16 条
+- **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。前者运行 17 条
   结构与许可断言（manifest 身份、四个 `exports`、唯一一条自引用 row、九条 persona 锚点及其文件、
-  `files[]` 覆盖、11 个 persona 的字节数、许可指针、三份许可文档、提供了上游指纹时的比对、
-  修改声明的各项主张、许可范围映射、机器路径扫描、约束移植前包名出现位置的类，以及 patch 的形状）。
+  `files[]` 覆盖、11 个 persona 的字节数、许可指针、三份许可文档、绝不允许进入 tarball 的路径、
+  提供了上游指纹时的比对、
+  修改声明的各项主张、许可范围映射及把每个范围块钉到其所声明内容的锚点、机器路径扫描、
+  约束移植前包名出现位置的类，以及 patch 的形状）。
   后者证明已发布的 patch 仍然等于三项已记录改写从冻结 baseline 算出的结果，并报告
   `verdict: "IDENTICAL"` 与 11 处改写点。两者都**零依赖**，因此在干净克隆里、无需安装即可通过。
 - **`npm run check:full`** 就是单独运行 `node tools/verify-patch.mjs`。当 `DSH_RUNTIME` 指向一个包含
@@ -209,9 +211,12 @@ npm run port -- --src <dir holding cordis.patch.yml>
   `--src` **没有默认值**，因为唯一诚实的默认值会是一个机器专属目录；错误消息把 baseline 目录作为
   替代来源点出来，而 `npm run port -- --src baseline` 会逐字节复现已提交的 patch。
 
-> **`npm run check` 必须在 git checkout 内运行。** 它的三条断言（许可范围映射、机器路径扫描，以及约束
+> **`npm run check` 与 `npm test` 都必须在 git checkout 内运行。** 包检查的三条断言（许可范围映射、
+> 机器路径扫描，以及约束
 > 移植前包名出现位置的类）都定义在**受版本跟踪的**文件集合之上，所以该工具向 `git ls-files` 索取这个
-> 集合。如果 git 无法回答，工具会以 `run inside a git checkout` 失败，而不是悄悄跳过这三条。因此，
+> 集合。如果 git 无法回答，工具会以 `run inside a git checkout` 失败，而不是悄悄跳过这三条。`npm test`
+> 出于同样的原因也需要检出：它的最后一个用例会针对真实目录树运行包检查，所以在仓库之外解包同样会失败。
+> 因此，
 > 在仓库之外解包已发布 tarball 的使用者会看到这个错误，而这是刻意的：一条对从未做过的工作报告成功的
 > 映射检查，比没有检查更糟。已发布的包里包含这些工具与测试套件，所以这条链可以从克隆里重跑。
 
@@ -272,8 +277,8 @@ bundle patch 表达式的**逐字片段**，以便生成和校验该 patch。那
 - **本仓库与英文 fork 并存。** `Tacrine/oh-my-dsh-omo-fork` 是一个独立仓库，有自己的包、自己的
   preset id 和自己的范围映射。两个仓库互不影响：它们共享上游血缘，而本包中没有任何内容读取、写入或
   依赖另一个。
-- **撰写时这里尚未发布任何东西。** 在发布步骤完成之前，本仓库没有自己的 release tag、没有 CI 运行
-  记录，也没有 npm 产物。
+- **0.1.0 是本仓库的首次发布，此前没有任何版本发布过。** 本包在 npm 上没有前身，因此没有更早的产物可
+  供对照，也不存在从旧版本升级的路径。
 
 ## 源流
 
