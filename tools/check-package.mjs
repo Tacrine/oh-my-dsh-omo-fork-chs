@@ -65,6 +65,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
+import { pathToFileURL } from 'node:url'
 
 /** The package identity this repository is expected to publish under. */
 const EXPECTED = {
@@ -595,9 +596,21 @@ function main() {
   if (!quiet) process.stdout.write(JSON.stringify(report, null, 2) + '\n')
 }
 
-try {
-  main()
-} catch (error) {
-  process.stderr.write(`check-package: ${error.message}\n`)
-  process.exitCode = 1
+/**
+ * Run only when this module is the process entry point.
+ *
+ * Without this guard, importing the module — which the unit tests do, to reach
+ * `parseArgs` — would also run the whole check and print its report during the
+ * test run. The tool's behaviour when it is actually executed is unchanged; only
+ * the import path is quietened.
+ */
+const isEntryPoint = () => process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (isEntryPoint()) {
+  try {
+    main()
+  } catch (error) {
+    process.stderr.write(`check-package: ${error.message}\n`)
+    process.exitCode = 1
+  }
 }

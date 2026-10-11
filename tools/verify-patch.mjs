@@ -45,6 +45,7 @@
 
 import { readFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import {
   applyRewrites,
@@ -283,11 +284,23 @@ async function main() {
   }
 }
 
-try {
-  await main()
-} catch (error) {
-  // Fail loud but clean: the message names the flag or file at fault, and a raw
-  // stack trace would only bury it.
-  process.stderr.write(`verify-patch: ${error.message}\n`)
-  process.exitCode = 1
+/**
+ * Run only when this module is the process entry point.
+ *
+ * Without this guard, importing the module — which the unit tests do, to reach
+ * `parseArgs` — would also run the verifier against the test runner's own argument
+ * list. The tool's behaviour when it is actually executed is unchanged; only the
+ * import path is quietened.
+ */
+const isEntryPoint = () => process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
+
+if (isEntryPoint()) {
+  try {
+    await main()
+  } catch (error) {
+    // Fail loud but clean: the message names the flag or file at fault, and a raw
+    // stack trace would only bury it.
+    process.stderr.write(`verify-patch: ${error.message}\n`)
+    process.exitCode = 1
+  }
 }
