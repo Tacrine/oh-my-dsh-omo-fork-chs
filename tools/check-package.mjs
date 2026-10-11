@@ -121,16 +121,32 @@ const LICENSE_DOCUMENTS = ['LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']
 const FORBIDDEN_SHIPPED_PATHS = ['test/.probe-machine-path.txt']
 
 /**
- * The root-level names `npm pack` includes whatever `files[]` says: `README*`,
- * `LICEN[CS]E*` and `package.json`. Measured against a planted, untracked
- * `LICENSE.old.md`, which appeared in the tarball and took the entry count from 34
- * to 35 while every other gate stayed green. `CHANGELOG*` is deliberately absent
- * because npm does not auto-include it: a planted `CHANGELOG.old.md` did not ship.
+ * The root-level names `npm pack` includes whatever `files[]` says. npm states the
+ * rule as an inverted pattern list in `npm-packlist/lib/index.js`, in the `strict`
+ * array inside `processPackage()`:
  *
- * Case-insensitive on purpose. The check only ever sees untracked paths, so a
- * broader pattern cannot flag a file the repository actually ships.
+ *   '!/package.json', '!/readme{,.*[^~$]}', '!/copying{,.*[^~$]}',
+ *   '!/license{,.*[^~$]}', '!/licence{,.*[^~$]}'
+ *
+ * Four families, and this list carries all four. Each entry here is a case-
+ * insensitive prefix match, which is deliberately **broader** than npm's form: the
+ * `{,.*[^~$]}` tail excludes names ending in `~` or `$`, and a prefix match would
+ * still flag those. That breadth is safe rather than accidental, because this check
+ * only ever sees **untracked** paths, so it can only ever refuse to ship a file the
+ * repository does not track. Fail-closed is the right direction for a guard whose
+ * failure mode is an immutable tarball.
+ *
+ * The copying family was measured, not inferred: planted `COPYING`, `COPYING.md`,
+ * `COPYING.old.md` and `copying.txt` all shipped, while `COPYING.md~` did **not**,
+ * which confirms npm's `[^~$]` tail is live rather than dead text. `CHANGELOG*` is
+ * deliberately absent because npm does not auto-include it: a planted
+ * `CHANGELOG.old.md` did not ship.
+ *
+ * Only the root is covered here. The auto-include is not root-only, but a nested
+ * occurrence is already caught by A8c, whose `git ls-files --others` is
+ * name-independent.
  */
-const NPM_AUTO_INCLUDED_ROOT = [/^README/i, /^LICEN[CS]E/i, /^package\.json$/i]
+const NPM_AUTO_INCLUDED_ROOT = [/^README/i, /^LICEN[CS]E/i, /^COPYING/i, /^package\.json$/i]
 
 /** Strings `NOTICE.md` must carry; each one is a claim the license relies on. */
 const NOTICE_STRINGS = [
