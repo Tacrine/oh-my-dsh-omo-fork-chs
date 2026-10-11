@@ -283,6 +283,16 @@ Upstream names and trademarks belong to their owners.
 
 ## Known issues
 
+- **The declared peer range excludes dsh 0.2.0 and above, and the host skips the bundle there.** The
+  peers are declared as `>=0.1.7-rc.2 <0.2.0`, matching the upstream fork. On a dsh at 0.2.0 or
+  above, the host reports the plugin as incompatible, **skips the bundle**, and the command **still
+  exits 0**, so the failure is silent unless you read stderr: the preset never appears in the dump.
+  On such a version you must either run a dsh inside the declared range, or grant the exact-version
+  exemption with `dsh plugin allow-version "<pkg>@<version>" --dsh-version <version> --accept-risk`.
+  That exemption is the host's own escape hatch and carries the risk the host itself warns about, so
+  it is a deliberate acceptance of risk rather than a supported configuration. This behaviour is
+  inherited from the upstream fork and is not specific to this localization. On a runtime inside the
+  declared range the package mounts and composes correctly, including all nine persona anchors.
 - **`baseline/` proves reproducibility, not correctness.** The baseline is a frozen snapshot of the
   pre-port patch, committed so the round trip can be checked anywhere. It is byte-identical to the
   source patch, and the derivation proves the port is **reproducible**: the published patch and the

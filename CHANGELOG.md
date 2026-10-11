@@ -94,6 +94,14 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   `>=0.1.7-rc.2 <0.2.0`, plus `@deepseek-ai/cordis` at `^4.0.1`, 25 in total. There are no regular
   runtime `dependencies` and no `devDependencies`, so the package stays peer-only and the check
   pipeline stays zero-dependency.
+- That range excludes dsh 0.2.0 and above, matching the upstream fork. On such a host the plugin is
+  reported as incompatible, the bundle is **skipped**, and the command **still exits 0**, so the
+  failure is silent unless stderr is read: the preset never appears in a config dump. A consumer on
+  that version must either use a dsh inside the declared range or grant the exact-version exemption
+  with `dsh plugin allow-version "<pkg>@<version>" --dsh-version <version> --accept-risk`, which is
+  the host's own escape hatch and carries the risk the host warns about. On a runtime inside the
+  declared range the preset mounts and composes correctly, including all nine persona anchors. This
+  is inherited from the upstream fork and is not specific to this localization.
 - `exports` keeps `"./package.json"`, because the nine persona anchors locate the package directory
   through `createRequire(baseUrl).resolve('<pkg>/package.json')`. Without that export they fail with
   `ERR_PACKAGE_PATH_NOT_EXPORTED` at mount time.
