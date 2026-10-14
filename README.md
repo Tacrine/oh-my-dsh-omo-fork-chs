@@ -165,7 +165,8 @@ error that names the file is far easier to act on than an agent that quietly los
 
 Every `@deepseek-ai/*` package the patch mounts is declared as a **`peerDependency`**, never as a
 regular `dependency`. DSH provides them; the bundle must not install its own copies. Peer ranges are
-pinned as `>=0.1.7-rc.2 <0.2.0` (and `@deepseek-ai/cordis` as `^4.0.1`). The package declares 25
+declared as `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`, which keeps the
+0.1.7 line and adds the 0.2 line (and `@deepseek-ai/cordis` as `^4.0.1`). The package declares 25
 peers and **no** runtime dependencies and **no** dev dependencies, so nothing has to be installed
 for the tests or for the zero-dependency part of the check chain.
 
@@ -251,8 +252,8 @@ What each one proves:
 > published package includes the tools and the test suite so the chain can be re-run from a clone.
 
 > **Counting a document's lines in PowerShell: `Measure-Object -Line` counts non-empty lines
-> only.** `(Get-Content README.md | Measure-Object -Line).Lines` reports **298** for this file,
-> while `(Get-Content README.md).Count` reports **361** — the same file, two readings, and the
+> only.** `(Get-Content README.md | Measure-Object -Line).Lines` reports **311** for this file,
+> while `(Get-Content README.md).Count` reports **374** — the same file, two readings, and the
 > difference is 63 blank lines that the first command never saw. Nothing in the command's name or
 > output says so, so a length check built on it silently under-counts any file with blank lines in
 > it. Use `.Count`, or `[IO.File]::ReadAllLines(path).Count`, when you want the raw line count. The

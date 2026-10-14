@@ -153,8 +153,9 @@ plan-aware-persona: persona "file:///.../personas/atlas.md" is empty
 ## Peer 模型
 
 patch 挂载的每个 `@deepseek-ai/*` 包都声明为 **`peerDependency`**，而不是普通 `dependency`。它们由
-DSH 提供；bundle 不得安装自己的副本。peer 范围固定为 `>=0.1.7-rc.2 <0.2.0`（`@deepseek-ai/cordis`
-为 `^4.0.1`）。本包声明 25 条 peer，且**没有**运行期依赖、**没有**开发依赖，因此测试与检查链中零依赖
+DSH 提供；bundle 不得安装自己的副本。peer 范围声明为
+`>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`，既保留 0.1.7 线，又加入
+0.2 线（`@deepseek-ai/cordis` 为 `^4.0.1`）。本包声明 25 条 peer，且**没有**运行期依赖、**没有**开发依赖，因此测试与检查链中零依赖
 的那部分都不需要安装任何东西。
 
 DSH profile 的 `.npmrc` 设置了 `auto-install-peers=false`，所以这些 peer 是**纯声明式**的：pnpm 不会
