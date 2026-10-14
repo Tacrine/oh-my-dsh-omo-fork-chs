@@ -250,6 +250,16 @@ What each one proves:
 > mapping check that reports success for work it never did is worse than no check at all. The
 > published package includes the tools and the test suite so the chain can be re-run from a clone.
 
+> **Counting a document's lines in PowerShell: `Measure-Object -Line` counts non-empty lines
+> only.** `(Get-Content README.md | Measure-Object -Line).Lines` reports **298** for this file,
+> while `(Get-Content README.md).Count` reports **361** — the same file, two readings, and the
+> difference is 63 blank lines that the first command never saw. Nothing in the command's name or
+> output says so, so a length check built on it silently under-counts any file with blank lines in
+> it. Use `.Count`, or `[IO.File]::ReadAllLines(path).Count`, when you want the raw line count. The
+> same trap has already produced wrong readings of a plan file in this repository twice, from two
+> separate contributors, because the two numbers look equally plausible when you have not measured
+> both.
+
 ## License
 
 This repository is **dual-licensed**, and the two licenses are not alternatives you may choose
