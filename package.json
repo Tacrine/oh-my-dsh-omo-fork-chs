@@ -1,6 +1,6 @@
 {
   "name": "@tacrine_f/oh-my-dsh-omo-fork-chs",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "The unofficial Simplified Chinese fork of the tri-agent agent preset (Atlas orchestration plus Prometheus planning), packaged for DeepSeek Harness as a Cordis bundle; the vendored upstream content is licensed under SUL-1.0.",
   "type": "module",

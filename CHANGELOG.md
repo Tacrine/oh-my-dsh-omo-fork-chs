@@ -4,7 +4,14 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] — 2026-10-14
+
+**What this release is for.** 0.1.0 declared peer ranges that stopped below dsh 0.2, so a dsh 0.2.x
+host reported the bundle as incompatible, skipped it, and still exited 0 — a failure visible only on
+stderr. **0.1.1 widens those ranges so the bundle mounts on dsh 0.2.x with no exemption**, which is
+the change most consumers will care about. It also adds two checks to the package tool and corrects
+several documentation statements. Nothing in the preset's behaviour changes: the preset id, its
+`order`, the personas and the patch are the same as 0.1.0.
 
 Two gates were added to `tools/check-package.mjs` after 0.1.0 was released. They close
 gaps that the existing assertions could not see, and they change what the tool reports:
@@ -52,8 +59,9 @@ The 24 `@deepseek-ai/dsh-*` peer ranges were widened from `>=0.1.7-rc.2 <0.2.0` 
 ```
 
 The first clause is the range inherited from the upstream fork, so the previously supported line is
-unchanged; the second and third add the 0.2 line. `@deepseek-ai/cordis` stays at `^4.0.1` and
-`version` stays `0.1.0`.
+unchanged; the second and third add the 0.2 line. `@deepseek-ai/cordis` stays at `^4.0.1`. The
+package `version` moves from `0.1.0` to `0.1.1` in this release, which is what carries the widened
+ranges to consumers.
 
 **Why the change.** The host decides whether a profile bundle loads with a semver range check over
 the peers named `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*`, evaluated with prereleases included
@@ -195,4 +203,5 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   repositories with separate packages, preset ids and scope mappings, and neither affects the other.
 - A missing or empty persona file fails the mount by design, naming the file in the error.
 
+[0.1.1]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.0
