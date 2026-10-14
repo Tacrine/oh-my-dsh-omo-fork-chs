@@ -1,8 +1,8 @@
 # oh-my-dsh-omo-fork-chs
 
 [![npm version](https://img.shields.io/npm/v/@tacrine_f/oh-my-dsh-omo-fork-chs)](https://www.npmjs.com/package/@tacrine_f/oh-my-dsh-omo-fork-chs)
-[![license: SUL-1.0 (content) + MIT (packaging)](https://img.shields.io/badge/license-SUL--1.0_(content)_%2B_MIT_(packaging)-orange)](#license)
-[![node](https://img.shields.io/badge/node-%5E22.19.0%20%7C%7C%20%3E%3D24.0.0-blue)](#peer-model)
+[![license: SUL-1.0 (content) + MIT (packaging)](https://img.shields.io/badge/license-SUL--1.0_(content)_%2B_MIT_(packaging)-orange)](#许可)
+[![node](https://img.shields.io/badge/node-%5E22.19.0%20%7C%7C%20%3E%3D24.0.0-blue)](#peer-模型)
 
 `tri-agent` agent preset 的**简体中文非官方 fork**，面向
 [DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh) 打包为可发布的 Cordis bundle。
