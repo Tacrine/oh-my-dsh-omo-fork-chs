@@ -166,7 +166,7 @@ DSH profile 的 `.npmrc` 设置了 `auto-install-peers=false`，所以这些 pee
 下面全部在仓库根目录运行，且**无需安装**，只有 `check:full` 例外，它需要 runtime，并已如此标注。
 
 ```powershell
-# 1. 测试套件。零依赖。55 个测试。
+# 1. 测试套件。零依赖。56 个测试。
 npm run test
 
 # 2. 检查链。零依赖，不需要 runtime。
@@ -188,8 +188,8 @@ npm run port -- --src <dir holding cordis.patch.yml>
 每一条各自证明什么：
 
 - **`npm run test`** 运行 `node:test` 套件：三组正向改写、反向改写及其往返、参数解析器、从两侧检验
-  机器路径模式、零字节守卫，以及包检查的失败路径。共 55 个测试，不需要安装任何东西。
-- **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。前者运行 21 条
+  机器路径模式、零字节守卫，以及包检查的失败路径。共 56 个测试，不需要安装任何东西。
+- **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。前者运行 22 条
   结构与许可断言（manifest 身份、四个 `exports`、唯一一条自引用 row、九条 persona 锚点及其文件、
   `files[]` 覆盖、11 个 persona 的字节数、许可指针、三份许可文档、绝不允许进入 tarball 的路径，
   对 `files[]` 所列每个目录的未跟踪文件检查，以及 npm 无论 `files[]` 如何都会自动收录的根目录文件、

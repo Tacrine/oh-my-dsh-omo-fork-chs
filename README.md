@@ -180,7 +180,7 @@ Everything below runs from the repository root with **no install**, except `chec
 a runtime and is marked as such.
 
 ```powershell
-# 1. The test suite. Zero dependencies. 55 tests.
+# 1. The test suite. Zero dependencies. 56 tests.
 npm run test
 
 # 2. The check chain. Zero dependencies, no runtime needed.
@@ -203,10 +203,10 @@ What each one proves:
 
 - **`npm run test`** runs the `node:test` suite: the three forward rewrites, the inverse rewrites
   and their round trip, the argument parsers, the machine-path pattern from both sides, the
-  zero-byte guard, and the package check's negative paths. It is 55 tests and it needs nothing
+  zero-byte guard, and the package check's negative paths. It is 56 tests and it needs nothing
   installed.
 - **`npm run check`** is `node tools/check-package.mjs && node tools/verify-patch.mjs`. The first
-  runs 21 structural and license assertions (manifest identity, the four `exports`, the single
+  runs 22 structural and license assertions (manifest identity, the four `exports`, the single
   self-reference row, the nine persona anchors and their files, the `files[]` coverage, the eleven
   persona byte counts, the license pointers, the three license documents, the paths that must never
   ship, the untracked-file check over every directory `files[]` lists and the untracked root files
