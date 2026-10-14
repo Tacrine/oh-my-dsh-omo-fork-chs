@@ -21,7 +21,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -37,6 +37,15 @@ const TOOL = join(ROOT, 'tools', 'check-package.mjs')
 // rather than merely unlikely.
 const TMP = mkdtempSync(join(tmpdir(), 'omo-chs-qa-check-package-'))
 
+/**
+ * A private directory for the one case that needs a whole **checkout** rather than a
+ * single tampered file, also created by `mkdtempSync` and removed in `after()`.
+ *
+ * It is separate from `TMP` because the fixture inside it is a full clone with its
+ * own `.git`, and `rmSync` on the parent is the entire cleanup for both.
+ */
+const CLONE_DIRECTORY = mkdtempSync(join(tmpdir(), 'omo-chs-qa-check-package-clone-'))
+
 /** SHA256 of a file's bytes, so a fixture can prove it differs from its source. */
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex')
 
@@ -49,11 +58,18 @@ const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest(
  * job level, and a case that assumed it was unset would fail there while passing
  * locally.
  *
+ * `cwd` is optional and defaults to `ROOT`, so every case that inspects the real
+ * repository is unaffected. Pass it when the tool to run lives somewhere else:
+ * the tool derives its own root from its own location, but `trackedPaths` and
+ * `isDirectory` resolve against the **process working directory**, so a tool run
+ * from the wrong directory inspects the wrong tree and can report a false pass.
+ * When `cwd` is given, the caller is responsible for pointing `tool` at the copy.
+ *
  * @returns `{ status, stdout, stderr }`, with the status taken from the process itself.
  */
-function runCheck(extraFlags, env) {
-  const args = [TOOL, ...extraFlags]
-  const options = { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+function runCheck(extraFlags, env, { cwd = ROOT, tool = TOOL } = {}) {
+  const args = [tool, ...extraFlags]
+  const options = { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
   if (env !== undefined) options.env = env
   try {
     const stdout = execFileSync(process.execPath, args, options)
@@ -76,9 +92,10 @@ test.before(() => {
 })
 
 test.after(() => {
-  // The directory is this file's own, so removing it is the whole cleanup: there is
-  // no shared parent to hand back and nothing outside this path to touch.
+  // The directories are this file's own, so removing them is the whole cleanup:
+  // there is no shared parent to hand back and nothing outside these paths to touch.
   rmSync(TMP, { recursive: true, force: true })
+  rmSync(CLONE_DIRECTORY, { recursive: true, force: true })
 })
 
 test('a patch whose anchor names a missing persona file fails, naming that file', () => {
@@ -177,6 +194,58 @@ test('a fingerprint that is not 64 hex characters is a hard error, never a skip'
   }
   assert.notEqual(status, 0, 'a malformed fingerprint must not be skipped silently')
   assert.match(stderr, /64-character hex fingerprint/)
+})
+
+test('a files[] directory that no longer exists fails, naming that directory', () => {
+  // This is the one case that needs a whole checkout rather than a tampered file,
+  // because A19 asks whether a `files[]` entry resolves to anything in the tracked
+  // set and on disk. The fixture is a real `git clone` into a private temp
+  // directory, and the clone **keeps `.git`**: a copy made without it, by
+  // `git archive` for instance, makes the tool exit 1 for an unrelated reason
+  // (`cannot list the untracked files under personas/: run inside a git checkout`),
+  // so a case asserting only "non-zero exit" could pass while A19 stayed inert.
+  // That is also why the assertions below pin the message text and the directory
+  // name rather than the exit code alone.
+  const clone = join(CLONE_DIRECTORY, 'repo')
+  execFileSync('git', ['clone', '--quiet', ROOT, clone], { stdio: 'ignore' })
+
+  // The clone's tool is the file under test. It is copied rather than taken from the
+  // clone's own checkout because a clone carries only committed content, and the
+  // working-tree tool may be newer than the last commit. Copying the committed file
+  // would make this case pass while the working-tree change was inert.
+  const cloneTool = join(clone, 'tools', 'check-package.mjs')
+  writeFileSync(cloneTool, readFileSync(TOOL))
+
+  // `git rm -r` rather than a bare `rm -r`: it removes the directory from the index
+  // as well as the working tree, which is the state A19 exists to catch. With the
+  // index still listing the files, A14's machine-path scan reads them by name and
+  // throws ENOENT, and that throw preempts the report — so A19 would never be
+  // reached and this case would be measuring A14 instead.
+  execFileSync('git', ['rm', '-r', '--quiet', 'test'], { cwd: clone, stdio: 'ignore' })
+
+  // The fixture must actually be in the state the case is about, or the assertions
+  // below would pass for the wrong reason.
+  assert.equal(existsSync(join(clone, 'test')), false, 'the fixture must have lost the directory')
+  const manifest = JSON.parse(readFileSync(join(clone, 'package.json'), 'utf8'))
+  assert.ok(manifest.files.includes('test/'), 'the fixture must keep the files[] entry, or there is nothing to resolve')
+
+  // `cwd` is the clone, and the tool is the clone's copy: the tool derives its own
+  // root from its own location, but `trackedPaths` and `isDirectory` resolve against
+  // the **process working directory**. Running the real tool from the real repository
+  // would inspect the real tree — which is intact — and report a false pass.
+  const result = runCheck([], undefined, { cwd: clone, tool: cloneTool })
+  assert.notEqual(result.status, 0, 'the check must exit non-zero')
+  assert.match(result.stderr, /A19/)
+  assert.match(result.stderr, /"test\/"/)
+  assert.match(result.stderr, /no tracked path present on disk/)
+
+  // Coverage, stated so the gap is not mistaken for completeness. This exercises the
+  // classification branch that reads `REQUIRED_FILES`/`DIRECTORY_ENTRIES` for a
+  // directory the manifest spells with a slash. The third clause — `isDirectory` on
+  // the path — is **unreachable through the gate as it stands**: it can only fire
+  // when the directory is present, and when it is present the slash clauses already
+  // classify every entry the manifest carries. It stays defensive code, and no
+  // fixture here claims to cover it.
 })
 
 test('the unbroken tree passes, so the negative cases above are not vacuous', () => {
