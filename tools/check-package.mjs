@@ -804,6 +804,42 @@ function main() {
   if (idRows !== 40) fail('A16', PATCH, `has ${idRows} "- id:" occurrences, expected 40 (counted as a substring: the rows are indented, so an anchored pattern reports 0)`)
   record('A16', PATCH, `${patchLines} line(s), ${idRows} "- id:" occurrence(s)`)
 
+  // A17: the two modules the package copies out of this repository, pinned by
+  // content hash. A4 asserts only that each exists and is non-empty, so until
+  // this assertion existed a formatter, an editor or a stray write could change
+  // either file's bytes with every gate still green.
+  //
+  // A byte count is deliberately **not** used here, although A6 uses one for the
+  // personas. A count is length-sensitive only: a swapped character, a changed
+  // identifier or a reordered token leaves the length identical and the file
+  // semantically different, and that is exactly the class of edit a formatter
+  // makes to a `.mjs`. Measured: XOR-ing one byte of `plan-aware-persona.mjs`
+  // leaves it at 3685 bytes and changes its hash, so a count would have stayed
+  // green where the hash below goes red.
+  //
+  // The values are frozen, not derived: they are the SHA256 of the files as
+  // committed, recorded with the command that produced them in
+  // `.dsh/evidence/task-1-content-gate.txt`. `fileSha256` reads bytes rather than
+  // text on purpose, so a line-ending or encoding change is caught too.
+  const GATED_MODULES = [
+    ['index.js', 'A32DF6CA6466FF522C972932A84A5D1AA43E212B0CD2B1E0E29DD4ACF4908F44'],
+    ['plan-aware-persona.mjs', '52F4E3A60DFB09B5F52D284239AD533A6E7693CEBA3EA97F5F8AB9A75B444AB3'],
+  ]
+  const gatedHashes = []
+  for (const [moduleName, expectedHash] of GATED_MODULES) {
+    const modulePath = join(ROOT, moduleName)
+    const actualHash = fileSha256(modulePath)
+    gatedHashes.push(`${moduleName} ${actualHash}`)
+    if (actualHash !== expectedHash) {
+      fail(
+        'A17',
+        modulePath,
+        `hashes to ${actualHash}, expected ${expectedHash}; ${moduleName} ships to consumers and must stay byte-identical to the reviewed copy`,
+      )
+    }
+  }
+  record('A17', ROOT, `${GATED_MODULES.length} gated module(s): ${gatedHashes.join(', ')}`)
+
   if (failures.length !== 0) {
     process.stderr.write(`check-package: ${failures.length} assertion failure(s):\n  - ${failures.join('\n  - ')}\n`)
     process.exitCode = 1
