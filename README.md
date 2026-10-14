@@ -303,16 +303,28 @@ Upstream names and trademarks belong to their owners.
 
 ## Known issues
 
-- **The declared peer range excludes dsh 0.2.0 and above, and the host skips the bundle there.** The
-  peers are declared as `>=0.1.7-rc.2 <0.2.0`, matching the upstream fork. On a dsh at 0.2.0 or
-  above, the host reports the plugin as incompatible, **skips the bundle**, and the command **still
-  exits 0**, so the failure is silent unless you read stderr: the preset never appears in the dump.
-  On such a version you must either run a dsh inside the declared range, or grant the exact-version
-  exemption with `dsh plugin allow-version "<pkg>@<version>" --dsh-version <version> --accept-risk`.
-  That exemption is the host's own escape hatch and carries the risk the host itself warns about, so
-  it is a deliberate acceptance of risk rather than a supported configuration. This behaviour is
-  inherited from the upstream fork and is not specific to this localization. On a runtime inside the
-  declared range the package mounts and composes correctly, including all nine persona anchors.
+- **The declared peer range covers the 0.1.7 line and the 0.2 line, and was verified on one 0.2.x build.** The 24
+  `@deepseek-ai/dsh-*` peers are declared as
+  `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`, which keeps the range this
+  fork inherited from upstream and adds the 0.2 line. The host decides compatibility with a semver
+  range check over those peers, evaluating prereleases, so the range accepts `0.2.0`,
+  `0.2.1-alpha.1` and the later prerelease `0.2.2-beta`, and rejects `0.3.0-alpha.1`.
+  **Verified by experiment on `0.2.1-alpha.1`, which is the only 0.2.x build available to us**: with
+  no exemption present in the profile, a config dump of this package exits 0, writes **0 bytes to
+  stderr**, and carries the preset with all nine persona anchors. That is a claim about the mount and
+  the anchor paths, not about the personas' bytes and not about the preset's behaviour: no agent was
+  invoked, and a persona that still existed but had been truncated would pass the same check.
+  **`0.3.0-alpha.1` is the re-entry condition**: a future runtime in that range is rejected again,
+  with the same incompatibility warning on stderr and the same exit 0, so the failure stays silent
+  unless you read stderr. On such a version you must either run a dsh inside the declared range, or
+  grant the exact-version exemption with
+  `dsh plugin allow-version "<pkg>@<version>" --dsh-version <version> --accept-risk`. That exemption
+  is the host's own escape hatch and carries the risk the host itself warns about, so it is a
+  deliberate acceptance of risk rather than a supported configuration. **It is still needed for cases
+  this widening does not cover**: the published `0.1.0` on npm carries the old narrower range, and any
+  future 0.3.x runtime will need it. `@deepseek-ai/cordis` is declared at `^4.0.1` as well, but the
+  host never tests it — it only evaluates peers named `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*` —
+  so that entry is not a compatibility constraint the host enforces.
 - **`baseline/` proves reproducibility, not correctness.** The baseline is a frozen snapshot of the
   pre-port patch, committed so the round trip can be checked anywhere. It is byte-identical to the
   source patch, and the derivation proves the port is **reproducible**: the published patch and the

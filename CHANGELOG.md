@@ -43,6 +43,41 @@ existing negative-path cases rather than by new test files.
   `test/, test/` and had to work out that these are one directory and not two. Each
   offending directory is now named exactly once.
 
+### The peer range now covers dsh 0.2.x — verified on one 0.2.x build
+
+The 24 `@deepseek-ai/dsh-*` peer ranges were widened from `>=0.1.7-rc.2 <0.2.0` to:
+
+```
+>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0
+```
+
+The first clause is the range inherited from the upstream fork, so the previously supported line is
+unchanged; the second and third add the 0.2 line. `@deepseek-ai/cordis` stays at `^4.0.1` and
+`version` stays `0.1.0`.
+
+**Why the change.** The host decides whether a profile bundle loads with a semver range check over
+the peers named `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*`, evaluated with prereleases included
+(`{ includePrerelease: true }`). The old range rejects `0.2.1-alpha.1`, so on that runtime the host
+reported the plugin as incompatible, skipped the bundle, and still exited 0 — a silent failure
+visible only on stderr. The widened range accepts that runtime, so no exemption is needed for it.
+
+**What was verified, by experiment rather than by reading the range back.** On `0.2.1-alpha.1` —
+the only 0.2.x build available, so this is one build and not a general claim — with the working tree
+mounted as a local bundle and **no exemption present in the profile**, a `--dump-config` run exits
+0, writes **0 bytes to stderr**, and carries the preset with `order: 11` and all **nine** persona
+anchors, each resolving to a real file inside the mounted package. The same package with the old
+ranges produces 1884 bytes of stderr and no anchors, so the widening is what removed the skip.
+
+**What that does not prove.** It proves the anchor *paths* resolve, not that a persona's *bytes* are
+intact — a persona that still existed but had been truncated would pass the same check. It proves
+structural facts, not that the preset does anything, because no agent is invoked. And it is one
+build.
+
+**The re-entry condition is `0.3.0-alpha.1`.** The widened range rejects it, so a future runtime in
+that line is skipped again, with the same incompatibility warning on stderr and the same exit 0.
+The exemption remains documented and remains needed for that case and for the published `0.1.0`,
+whose manifest still carries the old narrower range.
+
 ## [0.1.0] — 2026-10-11
 
 0.1.0 is the first release of this repository; no earlier version was published. It carries the
@@ -142,7 +177,10 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   with `dsh plugin allow-version "<pkg>@<version>" --dsh-version <version> --accept-risk`, which is
   the host's own escape hatch and carries the risk the host warns about. On a runtime inside the
   declared range the preset mounts and composes correctly, including all nine persona anchors. This
-  is inherited from the upstream fork and is not specific to this localization.
+  is inherited from the upstream fork and is not specific to this localization. **Superseded — see
+  the Unreleased section "The peer range now covers dsh 0.2.x": the 24 peer ranges were widened
+  after this section was released, so the sentence above describes 0.1.0 as published and no longer
+  describes the current manifest.**
 - `exports` keeps `"./package.json"`, because the nine persona anchors locate the package directory
   through `createRequire(baseUrl).resolve('<pkg>/package.json')`. Without that export they fail with
   `ERR_PACKAGE_PATH_NOT_EXPORTED` at mount time.
