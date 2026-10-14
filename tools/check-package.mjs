@@ -668,15 +668,32 @@ function main() {
   // only guard, but A8c should not depend on that coupling.
   const listedDirectories = files.filter((entry) => entry.endsWith('/') || isDirectory(join(ROOT, entry)))
   const untrackedUnderListed = listedDirectories.flatMap((directory) => untrackedPathsUnder(directory))
+  // The entries above are taken from `files[]` as written, so the same directory can
+  // appear more than once when it is spelled more than once — `files: ["test", "test/"]`
+  // is two entries naming one directory. That is right for the scan, which must honour
+  // every entry as npm would, but wrong for the message: it named the directory once
+  // per spelling, so a reader saw `test/, test/` and had to work out that these are one
+  // directory and not two. The names are therefore deduplicated for the message only,
+  // keeping the first spelling seen so that an entry is still reported as `files[]`
+  // writes it. The scan, the paths it inspects and the `git ls-files --others`
+  // invocation are all untouched.
+  const namedDirectories = []
+  const namedSeen = new Set()
+  for (const directory of listedDirectories) {
+    const key = directory.replace(/\/$/, '')
+    if (namedSeen.has(key)) continue
+    namedSeen.add(key)
+    namedDirectories.push(directory)
+  }
   if (untrackedUnderListed.length !== 0) {
     fail(
       'A8c',
       MANIFEST,
-      `files[] lists ${listedDirectories.join(', ')}, and these untracked paths sit inside them: ` +
+      `files[] lists ${namedDirectories.join(', ')}, and these untracked paths sit inside them: ` +
         `${untrackedUnderListed.join(', ')}. npm pack ships the contents of a listed directory, so each of these would be published`,
     )
   }
-  record('A8c', MANIFEST, `${listedDirectories.length} listed director(ies) hold no untracked path: ${listedDirectories.join(', ')}`)
+  record('A8c', MANIFEST, `${namedDirectories.length} listed director(ies) hold no untracked path: ${namedDirectories.join(', ')}`)
 
   // A8d: the root-level names `npm pack` includes whatever `files[]` says. A8c
   // cannot see these, because they are not inside a listed directory, and the pack
