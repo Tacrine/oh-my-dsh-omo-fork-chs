@@ -188,13 +188,14 @@ npm run port -- --src <dir holding cordis.patch.yml>
 
 - **`npm run test`** 运行 `node:test` 套件：三组正向改写、反向改写及其往返、参数解析器、从两侧检验
   机器路径模式、零字节守卫，以及包检查的失败路径。共 55 个测试，不需要安装任何东西。
-- **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。前者运行 19 条
+- **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。前者运行 21 条
   结构与许可断言（manifest 身份、四个 `exports`、唯一一条自引用 row、九条 persona 锚点及其文件、
   `files[]` 覆盖、11 个 persona 的字节数、许可指针、三份许可文档、绝不允许进入 tarball 的路径，
   对 `files[]` 所列每个目录的未跟踪文件检查，以及 npm 无论 `files[]` 如何都会自动收录的根目录文件、
   提供了上游指纹时的比对、
   修改声明的各项主张、许可范围映射及逐条把每个范围块钉到其所声明内容的锚点、机器路径扫描、
-  约束移植前包名出现位置的类，以及 patch 的形状）。
+  约束移植前包名出现位置的类、本仓库向消费者复制的两个模块的 SHA256、
+  每份带内部锚点的文档中锚点是否都能解析到标题，以及 patch 的形状）。
   后者证明已发布的 patch 仍然等于三项已记录改写从冻结 baseline 算出的结果，并报告
   `verdict: "IDENTICAL"` 与 11 处改写点。两者都**零依赖**，因此在干净克隆里、无需安装即可通过。
 - **`npm run check:full`** 就是单独运行 `node tools/verify-patch.mjs`。当 `DSH_RUNTIME` 指向一个包含

@@ -4,6 +4,45 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Two gates were added to `tools/check-package.mjs` after 0.1.0 was released. They close
+gaps that the existing assertions could not see, and they change what the tool reports:
+it now runs **21** structural and license assertions rather than 19. The test suite is
+unchanged at 55 tests, because the new gates are asserted by the tool itself and by the
+existing negative-path cases rather than by new test files.
+
+### Added
+
+- A content-hash gate on `index.js` and `plan-aware-persona.mjs`: the tool asserts the
+  SHA256 of each against a frozen value. A byte count is not enough for these two,
+  because it is sensitive to length only — a swapped character, a changed identifier or
+  a reordered token leaves the length identical and the file different, which is exactly
+  the class of edit a formatter makes to a `.mjs`. Measured: flipping one byte of
+  `plan-aware-persona.mjs` leaves it at 3685 bytes and changes its hash.
+- An anchor-resolution gate: every internal markdown anchor — a link whose target begins
+  with a `#` — in `README.md`, `README.zh.md`, `CHANGELOG.md` and `NOTICE.md` must
+  resolve to a heading slug in the same document,
+  using GitHub's own slug rule (lowercase; strip everything that is not a word
+  character, a hyphen or whitespace; keep CJK; spaces to hyphens; repeated headings
+  deduplicated with `-1`, `-2`). The rule was verified against `github-slugger` 2.0.0 on
+  all 38 headings of the four documents with 0 disagreements.
+
+### Fixed
+
+- `README.zh.md`'s two badge links pointed at `#license` and `#peer-model` while the
+  document's headings are `## 许可` and `## Peer 模型`, so both links landed nowhere.
+  The links now match the headings. The headings were not renamed: they are the
+  document's structure, and the English document's equivalent links were already
+  correct.
+- The `.gitattributes` scope entry was named in `NOTICE.md`'s mit-scope block and in the
+  tool's expected scope set, but missing from the anchor list that resolves each entry
+  against the block claiming it. It is now anchored like its ten siblings.
+- `check-package.mjs`'s untracked-file failure message named the same directory once per
+  spelling when `files[]` listed one directory under two spellings, so a reader saw
+  `test/, test/` and had to work out that these are one directory and not two. Each
+  offending directory is now named exactly once.
+
 ## [0.1.0] — 2026-10-11
 
 0.1.0 is the first release of this repository; no earlier version was published. It carries the

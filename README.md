@@ -205,7 +205,7 @@ What each one proves:
   zero-byte guard, and the package check's negative paths. It is 55 tests and it needs nothing
   installed.
 - **`npm run check`** is `node tools/check-package.mjs && node tools/verify-patch.mjs`. The first
-  runs 19 structural and license assertions (manifest identity, the four `exports`, the single
+  runs 21 structural and license assertions (manifest identity, the four `exports`, the single
   self-reference row, the nine persona anchors and their files, the `files[]` coverage, the eleven
   persona byte counts, the license pointers, the three license documents, the paths that must never
   ship, the untracked-file check over every directory `files[]` lists and the untracked root files
@@ -213,7 +213,9 @@ What each one proves:
   when one is supplied, the modification-notice claims, the license scope mapping and the per-entry
   anchors
   that pin each scope block to the content it claims, the machine-path
-  scan and the classes that govern where the pre-port package name may appear, and the patch's
+  scan and the classes that govern where the pre-port package name may appear, the SHA256 of the
+  two modules the package copies out of this repository, the internal markdown anchors of every
+  document that carries one, and the patch's
   shape). The second proves the published patch
   still equals what the three documented rewrites compute from the frozen baseline, and reports
   `verdict: "IDENTICAL"` with 11 rewrite sites. Both are **zero-dependency**, so they pass in a
