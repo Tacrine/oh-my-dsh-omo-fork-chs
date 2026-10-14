@@ -110,6 +110,18 @@ const REQUIRED_FILES = [
 const LICENSE_DOCUMENTS = ['LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']
 
 /**
+ * The documents whose internal `](#…)` anchors A18 resolves, and the reason each is
+ * in the list.
+ *
+ * `CHANGELOG.md` and `NOTICE.md` are scanned although they carry no internal link
+ * today. They are named here so that the check *reports* that fact rather than
+ * assuming it: if a later edit adds a link to either, A18 resolves it instead of
+ * silently ignoring a document nobody thought to include. A document named in a
+ * report cannot be quietly skipped.
+ */
+const ANCHOR_DOCUMENTS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md']
+
+/**
  * Paths that must never reach the tarball, checked against the filesystem rather
  * than against `git ls-files`, because `npm pack` ships the contents of a listed
  * directory and does not consult the index or `.gitignore`.
@@ -445,6 +457,83 @@ function scopeEntries(notice, marker) {
  * anything else matches exactly one path; matching is case-sensitive.
  */
 const entryMatches = (entry, path) => (entry.endsWith('/') ? path.startsWith(entry) : path === entry)
+
+/**
+ * The heading slug rule GitHub uses, implemented here rather than depended on.
+ *
+ * The rule, verified against `github-slugger` 2.0.0 — the implementation GitHub's
+ * own pipeline uses — on all 38 headings of the four documents with 0 disagreements:
+ * lowercase; strip everything that is not a word character, a hyphen or whitespace;
+ * keep CJK; spaces to hyphens.
+ *
+ * Two cases are worth keeping in mind, because they are the ones a naive
+ * implementation gets wrong. `Peer 模型` slugs to `peer-模型`: CJK characters are word
+ * characters and must survive, and only the ASCII space becomes a hyphen. And
+ * `[0.1.0] — 2026-10-11` slugs to `010--2026-10-11`: the brackets and the em dash are
+ * stripped, which leaves the two spaces that surrounded the dash adjacent, so they
+ * become a double hyphen rather than a single one.
+ *
+ * The character class is written with Unicode property escapes and a negated set, so
+ * "word character" means what it means to the slugger rather than what JavaScript's
+ * ASCII-only `\w` would mean. Stripping is done by removing everything that is not
+ * kept, which is the slugger's own order of operations.
+ *
+ * A third clause of the slugger is implemented in `headingSlugs` rather than here:
+ * repeated headings are deduplicated by appending `-1`, `-2`. All 38 headings in this
+ * repository are unique today, so it cannot bite, but it is implemented so that the
+ * gate does not depend on that remaining true.
+ */
+const slugifyHeading = (text) =>
+  text
+    .trim()
+    .replace(/[^\p{L}\p{N}\p{M}\p{Pc}\- ]/gu, '')
+    .replace(/ /g, '-')
+    .toLowerCase()
+
+/** A `##` or `###` heading, capturing its text and ignoring a closing run of `#`. */
+const HEADING_LINE = /^#{2,3}[ \t]+(.*?)[ \t]*#*[ \t]*$/
+
+/** The target of an internal link: `](#…)`, capturing the fragment without the `#`. */
+const INTERNAL_LINK = /\]\(#([^)\s]*)\)/g
+
+/**
+ * The heading slugs of one document, deduplicated the way the slugger does it, plus
+ * the internal anchors its links target.
+ *
+ * Fenced code blocks are skipped on both sides. A `#` line inside a fence is sample
+ * text rather than a heading, and a `](#…)` inside a fence is sample text rather than
+ * a link; resolving either would invent a heading the renderer does not produce, or
+ * fail a link the renderer never follows.
+ */
+function documentAnchors(text) {
+  const slugs = new Set()
+  const seen = new Map()
+  const targets = []
+  let inFence = false
+  for (const line of text.split('\n')) {
+    if (/^[ \t]*(```|~~~)/.test(line)) {
+      inFence = !inFence
+      continue
+    }
+    if (inFence) continue
+    const heading = line.match(HEADING_LINE)
+    if (heading !== null) {
+      const base = slugifyHeading(heading[1])
+      const count = seen.get(base) ?? 0
+      seen.set(base, count + 1)
+      slugs.add(count === 0 ? base : `${base}-${count}`)
+      continue
+    }
+    for (const match of line.matchAll(INTERNAL_LINK)) targets.push(match[1])
+  }
+  return { slugs, targets }
+}
+
+/** The anchor targets of one document that no heading in that same document resolves. */
+const unresolvedAnchors = (text) => {
+  const { slugs, targets } = documentAnchors(text)
+  return [...new Set(targets.filter((target) => !slugs.has(target)))]
+}
 
 function main() {
   const flags = parseArgs(process.argv.slice(2))
@@ -839,6 +928,42 @@ function main() {
     }
   }
   record('A17', ROOT, `${GATED_MODULES.length} gated module(s): ${gatedHashes.join(', ')}`)
+
+  // A18: every internal `](#…)` anchor resolves to a heading in the same document.
+  //
+  // Both sides are derived from each document separately. That is the whole point:
+  // the English and Chinese READMEs carry the same two badge links, and the English
+  // headings `Peer model` / `License` resolve them while the Chinese headings
+  // `Peer 模型` / `许可` do not. A check that searched the repository for the anchor
+  // text, or that pooled all headings into one set, would see the English document
+  // satisfy both links and stay green on the broken Chinese pair — which is exactly
+  // the defect this assertion exists to catch. Neither known-bad anchor is named
+  // anywhere in this file; the assertion finds them by resolving, not by looking.
+  //
+  // The failure names every unresolved anchor verbatim, because a reader needs the
+  // fragment to fix the link, and reports the documents it examined on success so
+  // that a document silently dropped from the list is visible.
+  const anchorReports = []
+  for (const documentName of ANCHOR_DOCUMENTS) {
+    const documentPath = join(ROOT, documentName)
+    const text = readText(documentPath)
+    const { slugs, targets } = documentAnchors(text)
+    const unresolved = [...new Set(targets.filter((target) => !slugs.has(target)))]
+    if (unresolved.length !== 0) {
+      fail(
+        'A18',
+        documentPath,
+        `these internal anchor(s) resolve to no heading in the same document: ${unresolved.join(', ')}. ` +
+          `Each one is a link the reader can click and land nowhere; fix the link or add the heading it names`,
+      )
+    }
+    anchorReports.push(
+      targets.length === 0
+        ? `${documentName} (no internal anchors, ${slugs.size} heading slug(s))`
+        : `${documentName} (${targets.length} anchor(s) resolved, ${slugs.size} heading slug(s))`,
+    )
+  }
+  record('A18', ROOT, `internal anchors checked: ${anchorReports.join('; ')}`)
 
   if (failures.length !== 0) {
     process.stderr.write(`check-package: ${failures.length} assertion failure(s):\n  - ${failures.join('\n  - ')}\n`)
