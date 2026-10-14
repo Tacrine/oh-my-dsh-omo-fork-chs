@@ -797,8 +797,14 @@ function main() {
     sul: ['personas/', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'baseline/cordis.patch.yml'],
     mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', '.gitignore', '.gitattributes', 'README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md'],
   }
+  // The two anchor lists below carry a property the entry-set comparison above does
+  // not: each path here is checked against both blocks, so a path that is covered by
+  // the block it should not be in fails as well as one that is missing from the block
+  // it should be in. The lists are pinned to the same eleven mit entries as
+  // `EXPECTED_SCOPE.mit`, so no path can be named in the scope block without also
+  // being resolved against the block that claims it.
   const SUL_ANCHORS = ['baseline/cordis.patch.yml', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'personas/atlas.md']
-  const MIT_ANCHORS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', 'baseline/README.md', 'NOTICE.md']
+  const MIT_ANCHORS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', '.gitattributes', 'baseline/README.md', 'NOTICE.md']
   const blockFor = (id) => scopeBlocks.find((block) => block.id === id)
   const blockCovers = (block, path) => block.entries.some((entry) => entryMatches(entry, path))
   for (const [id, expected] of Object.entries(EXPECTED_SCOPE)) {
