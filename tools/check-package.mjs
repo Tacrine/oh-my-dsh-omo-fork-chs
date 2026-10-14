@@ -122,6 +122,22 @@ const LICENSE_DOCUMENTS = ['LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']
 const ANCHOR_DOCUMENTS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md']
 
 /**
+ * The `files[]` entries A19 treats as directories, spelled the way `REQUIRED_FILES`
+ * spells them — with a trailing slash.
+ *
+ * A19 needs to know which entries name a directory, and **the classification must not
+ * consult the tracked tree**. A rule that classifies by "does any tracked path begin
+ * with `${entry}/`" is simultaneously the classification test and the existence test,
+ * so in exactly the state this assertion exists to catch the entry is classified as a
+ * file, skipped, and the gate stays green. `isDirectory` alone is not enough either:
+ * it is `statSync(path).isDirectory()`, which returns **false once the directory has
+ * been deleted**. This list is therefore the classification floor, and it is frozen
+ * beside the other tables so that adding a directory to `files[]` forces a deliberate
+ * decision here rather than silently widening the set A19 covers.
+ */
+const DIRECTORY_ENTRIES = ['personas/', 'baseline/', 'test/', 'tools/']
+
+/**
  * Paths that must never reach the tarball, checked against the filesystem rather
  * than against `git ls-files`, because `npm pack` ships the contents of a listed
  * directory and does not consult the index or `.gitignore`.
@@ -407,6 +423,59 @@ function isDirectory(path) {
   } catch {
     return false
   }
+}
+
+/**
+ * Does this `files[]` entry name a directory? Three clauses, and the order is the
+ * point — see `DIRECTORY_ENTRIES` for why the tracked tree is not consulted.
+ *
+ *   1. it ends with `/`, which is npm's own way of spelling a directory;
+ *   2. it matches a `DIRECTORY_ENTRIES` entry once the trailing slash is stripped —
+ *      the slashless spelling of a known directory, which is the spelling a tampered
+ *      manifest is most likely to carry and the one a tracked-tree rule would skip;
+ *   3. it is a directory on disk right now, which catches an entry spelled some other
+ *      way while the directory exists.
+ *
+ * Clause 3 is defensive and, against the real gate, unobservable by any acceptance
+ * criterion: it can only fire when the directory is present, and when it is present
+ * the other two clauses already cover every entry the manifest actually carries. It
+ * is kept because it costs nothing and covers a spelling this file has not seen.
+ *
+ * `root` is passed in rather than read from a module-level constant, because `ROOT` is
+ * a local of `main`.
+ */
+function isDirectoryEntry(entry, root) {
+  if (entry.endsWith('/')) return true
+  const stripped = entry.replace(/\/+$/, '')
+  if (DIRECTORY_ENTRIES.some((directory) => directory.replace(/\/+$/, '') === stripped)) return true
+  return isDirectory(join(root, entry))
+}
+
+/**
+ * The tracked paths under a directory that are also present on disk — the
+ * intersection, which is the predicate A19 is built on.
+ *
+ * Both halves are load-bearing, and each is justified by a different state:
+ * **tracked-only** stays green while the index still lists a directory whose files
+ * have been removed from disk, and **present-only** would pass on a stray untracked
+ * file that is not what the package ships. The intersection is the state `npm pack`
+ * actually ships from.
+ *
+ * `trackedPaths()` shells out to `git ls-files` with **no `cwd`**, so it resolves
+ * against the process working directory. That is correct here, because this tool is
+ * invoked from the repository root, but a copy of it run from another directory
+ * inspects the wrong index and reports a **false pass**.
+ *
+ * `root` is passed in rather than read from a module-level constant, because `ROOT` is
+ * a local of `main`.
+ */
+function trackedAndPresentPathsUnder(directory, root) {
+  // The prefix is built from the directory with its trailing slash stripped, because
+  // the entries this is called with are spelled `test/` and `${directory}/` would
+  // otherwise yield `test//`, which matches no tracked path and would fail every
+  // directory — a false red rather than a false pass, but just as wrong.
+  const prefix = `${directory.replace(/\/+$/, '')}/`
+  return trackedPaths().filter((path) => path.startsWith(prefix) && existsSync(join(root, path)))
 }
 
 /**
@@ -987,6 +1056,43 @@ function main() {
     )
   }
   record('A18', ROOT, `internal anchors checked: ${anchorReports.join('; ')}`)
+
+  // A19: every `files[]` entry naming a directory resolves to a tracked path on disk.
+  //
+  // A5 (`:597`) is a containment check — `files.includes(entry)` — and never asks
+  // whether the entry resolves to anything. That is the hole this closes. Measured:
+  // `git rm -r test` with `"test/"` still in `files[]` leaves A5 satisfied and A14
+  // reading nothing, because the files left the *index*; the tool exits **0** with
+  // `verdict: OK` while `npm pack` ships 28 entries instead of 34. A package can lose
+  // a whole directory in silence.
+  //
+  // What it proves: at least one path under the directory is both tracked and present
+  // on disk. What it does **not** prove: that the directory holds anything beyond that
+  // one path, nor that its contents match what `files[]` implies. It also does **not**
+  // cover a `files[]` entry naming a missing *file* — the known files are covered
+  // elsewhere (A4/A6 the personas, A17 the two copied modules, A9/A12/A13/A15 the
+  // licence documents and the patch), and an entry for a file nobody asserts on would
+  // still pass here.
+  //
+  // Every directory entry is named in the success record, so an entry silently dropped
+  // from the covered set is visible — the same reasoning `ANCHOR_DOCUMENTS` documents
+  // for A18.
+  const directoryEntries = files.filter((filesEntry) => isDirectoryEntry(filesEntry, ROOT))
+  const directoryReports = []
+  for (const directory of directoryEntries) {
+    const resolving = trackedAndPresentPathsUnder(directory, ROOT)
+    if (resolving.length === 0) {
+      fail(
+        'A19',
+        MANIFEST,
+        `files[] entry ${JSON.stringify(directory)} names a directory with no tracked path present on disk. ` +
+          `Either it is untracked, or its files have been removed from the working tree — the package would ` +
+          `ship without them while the containment check above stays satisfied`,
+      )
+    }
+    directoryReports.push(`${directory} (${resolving.length})`)
+  }
+  record('A19', MANIFEST, `files[] directories resolved: ${directoryReports.join(', ')}`)
 
   if (failures.length !== 0) {
     process.stderr.write(`check-package: ${failures.length} assertion failure(s):\n  - ${failures.join('\n  - ')}\n`)
