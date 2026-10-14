@@ -4,4 +4,3 @@ node_modules/
 .dsh/
 .tmp-*/
 *.log
-test/.tmp/
