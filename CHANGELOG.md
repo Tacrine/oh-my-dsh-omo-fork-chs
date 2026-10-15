@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**What this is for.** `A5` checks that `files[]` *contains* every entry in `REQUIRED_FILES`, but no
+assertion checked that those entries *resolve to anything*. **`A19`** closes that gap: for every
+`files[]` entry that names a directory, the tool now requires at least one path under it that is
+both tracked and present on disk.
+
+**The hole, measured rather than argued.** With `"test/"` still listed in `files[]`, `git rm -r test`
+was the silent state: the old tool exited **0** with verdict OK, `prepack` passed, `npm pack` yielded
+**28** entries instead of 34, and `node --test` reported **0 tests at exit 0** — the package shipped
+without its test suite and nothing went red. A plain `rm -r test` that leaves the index intact was
+**already** red before this change, reached through `A14`'s machine-path scan reading a tracked path
+that is no longer on disk (`cannot read test/check-package-negative.test.mjs: ENOENT`); that state
+was never green. So in that second state `A19`'s contribution is not that it turns a green gate red,
+but that the failure is now **about the missing directory** rather than about a missing file, and
+that it keeps working if `A14`'s list of files it reads by name ever changes.
+
+**What it does not prove.** It proves that at least one path under a `files[]`-named directory is
+both tracked and present on disk. It does not prove the directory is non-empty beyond that, nor that
+its contents match what `files[]` implies, and it does not cover a `files[]` entry naming a missing
+**file** — the known files are covered elsewhere (`A4`/`A6` for the personas, `A17` for the two
+copied modules, `A9`/`A12`/`A13`/`A15` for the licence documents and the patch).
+
+**Counts.** The tool now runs **22** structural and license assertions rather than 21, and the test
+suite totals **56** tests rather than 55.
+
 ## [0.1.1] — 2026-10-14
 
 **What this release is for.** 0.1.0 declared peer ranges that stopped below dsh 0.2, so a dsh 0.2.x
@@ -203,5 +229,6 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   repositories with separate packages, preset ids and scope mappings, and neither affects the other.
 - A missing or empty persona file fails the mount by design, naming the file in the error.
 
+[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.1.1...HEAD
 [0.1.1]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.0
