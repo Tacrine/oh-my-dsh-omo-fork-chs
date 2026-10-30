@@ -70,13 +70,13 @@ import { pathToFileURL } from 'node:url'
 /** The package identity this repository is expected to publish under. */
 const EXPECTED = {
   name: '@tacrine_f/oh-my-dsh-omo-fork-chs',
-  version: '0.1.1',
+  version: '0.2.0',
   license: 'SEE LICENSE IN NOTICE.md',
 }
 
 /** The persona file names, in the order the frozen byte table lists them. */
 const PERSONA_TABLE = [
-  ['atlas.md', 40874],
+  ['atlas.md', 41598],
   ['explore.md', 4720],
   ['hephaestus.md', 23405],
   ['librarian.md', 11517],
@@ -980,9 +980,9 @@ function main() {
 
   // A16: the patch's shape, counted as substrings because the rows are indented.
   const patchLines = patchText.split('\n').length - (patchText.endsWith('\n') ? 1 : 0)
-  if (patchLines !== 540) fail('A16', PATCH, `has ${patchLines} lines, expected 540`)
+  if (patchLines !== 946) fail('A16', PATCH, `has ${patchLines} lines, expected 946`)
   const idRows = countOf(patchText, '- id:')
-  if (idRows !== 40) fail('A16', PATCH, `has ${idRows} "- id:" occurrences, expected 40 (counted as a substring: the rows are indented, so an anchored pattern reports 0)`)
+  if (idRows !== 173) fail('A16', PATCH, `has ${idRows} "- id:" occurrences, expected 173 (counted as a substring: the rows are indented, so an anchored pattern reports 0)`)
   record('A16', PATCH, `${patchLines} line(s), ${idRows} "- id:" occurrence(s)`)
 
   // A17: the two modules the package copies out of this repository, pinned by

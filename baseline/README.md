@@ -11,15 +11,16 @@ that this fork vendors from. It was captured by reversing the three port rewrite
 `node tools/derive-baseline.mjs`, which reads this repository's published `cordis.patch.yml`
 and applies the inverse of the rules in `tools/lib/rewrites.mjs`.
 
-- Source: the chs bundle's `cordis.patch.yml`
-- Source byte count: 26903
-- Source line count: 540
-- Source SHA256: `BD9619038AFB3817C4EC8599B6A67EAC559A6193FFF53C820F1895E26312514F`
+- Source: the repository's own `cordis.patch.yml` (the published agentPreset form)
+- Source byte count: 42649
+- Source line count: 946
+- Source SHA256: `06CA0E349E975DA6C948CE823D648DA1D2F370149F61D63BE9964692ACD7E829`
 
-The baseline file in this directory is **byte-identical** to that source: same 26903 bytes,
-same 540 lines, same SHA256. It carries no header, no provenance comment and no added blank
-line, because any of those would break both the byte-identity assertion and the round trip.
-This sidecar exists precisely so that nothing has to be added to the file itself.
+The baseline file in this directory is the **pre-port** form: 41743 bytes, 946 lines,
+SHA256 `E086ED15B390DF293A46B6F901103B9F84839C0F4C2B5E562537F34A2644830C`. It differs from the
+source because the three port rewrites transform the package reference and persona-file paths.
+Re-applying those rewrites (`node tools/port-patch.mjs --src baseline`) reproduces the published
+patch byte for byte, which is what the verification chain proves.
 
 ## Upstream provenance
 
