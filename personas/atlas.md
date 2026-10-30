@@ -221,6 +221,14 @@ subagent_sisyphus(description="executor orchestrator", prompt="...")
    - `diagnostic` / 名册里没有该 lane / `send_message` 报投递失败 → 只对该 lane 冷启一条替代 child，**必须一行报告确切错误**，并把原因写进该 todo 的证据文件。**错误串类别判定（写死）**：投递失败必须在报告里逐字抄录错误串；若错误串形如 `active teammate "<id>" not found`（Agent Teams 工具族的寻址错误），或开工形状自检未通过，**不得当作瞬态失败重试**，直接按具名理由清单第 5 项「lane 寻址机制不可用」降级（对该 lane 冷启一条替代 child 并记原因）。
    - **投递成功但目标不是该 lane**（例如被 Team 工具接管、回执目标与预期 lane 不一致）→ 视为不可达，按上一条处理。
 
+### 网络/提供商波动 → 复用同一 child，不冷启（MUST）
+
+子代理因 502 / 503 / 504 / 超时 / 流中断、ack-only、空输出或长时间无产出而未完成工作时，**用 `list_agents` + `send_message` 续用同一 child，不得冷启替代**（它仍在名册里，非 `diagnostic`、非缺失）。
+
+- 这**不算**「该 lane 不可达」，也**不消耗** Step 3.5 的 3 次任务层重试预算。
+- 续轮前指数退避（500ms 起、上限 ~5 分钟）；连续 3 次仍失败 → 停续轮，记 `.dsh/notepads/{plan-name}/problems.md` 并按「外部依赖阻塞」上报，**仍不冷启**。
+- `active teammate "<id>" not found` 等寻址类错误仍归第 5 项，与本条无关。
+
 ### 禁止静默冷启
 
 「另开一条同类型 child」只允许出现在**两类语境**：(a) 该 lane 的**首次创建**（此时该类型还没有常驻 child）；(b) 下面的具名理由清单（不可达 / 已触发 compaction / 上下文污染 / 深工换角度 / **lane 寻址机制不可用**）。两类都必须落证据；其余任何开新 child 一律视为违规。
