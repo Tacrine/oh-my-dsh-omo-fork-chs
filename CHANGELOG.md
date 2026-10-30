@@ -30,6 +30,63 @@ copied modules, `A9`/`A12`/`A13`/`A15` for the licence documents and the patch).
 **Counts.** The tool now runs **22** structural and license assertions rather than 21, and the test
 suite totals **56** tests rather than 55.
 
+## [0.2.0] — 2026-10-30
+
+**What this release is for.** The 9 subagent rows are migrated from the old
+`persona: !!js readFileSync(...)` + `toolFilter` pattern to 9
+`dsh-agent-preset` sub-presets (`omo-explore` through `omo-multimodal-looker`)
+using `agentPreset`, which is the supported mechanism in cordis `^4.0.1`.
+The duplicate `list-agents` subpath was removed, and atlas gained a
+transport-failure reuse rule. The bundle is now verified on two 0.2.x builds
+rather than one.
+
+Nothing in the preset's behaviour changes — the persona prose and the
+orchestration doctrine are unchanged — but the patch grows from 540 to 946
+lines because each sub-preset repeats its `!!js readFileSync(...)` expression
+from the old `persona:` field.
+
+### Changed
+
+- **Cordis migration — `persona`/`toolFilter` → `agentPreset`.** The 9 subagent
+  rows (`tool-subagent-explore` through `tool-subagent-multimodal-looker`)
+  no longer carry a `persona:` field or a `toolFilter:` list. Instead, 9 new
+  `dsh-agent-preset` blocks are appended to the patch (`omo-explore` order 100
+  through `omo-multimodal-looker` order 108), each setting `dsh-persona`
+  `prefix:` to the same `!!js readFileSync(...)` expression. The `toolFilter`
+  was dropped: a preset's plugin list *is* its tool catalog, so the deny list
+  becomes structural. Three template groups (read-only A, writable B, vision C)
+  follow the same pattern as `preset-tri-*`. The `persona:` field is removed
+  from the 9 rows, and `agentPreset` on each row references the corresponding
+  sub-preset id. See Todo 2 in `notepads/handover-v0.2.0-upgrade/learnings.md`.
+- **atlas.md: transport-failure reuse rule added.** A new section
+  `### 网络/提供商波动 → 复用同一 child，不冷启（MUST）` was inserted before the
+  existing `### 禁止静默冷启` ban, so atlas reuses the same child on provider
+  or network fluctuations instead of starting a cold replacement.
+
+### Fixed
+
+- **Removed duplicate `dsh-tool-subagent-control/list-agents` row.** The root
+  `dsh-tool-subagent-control` entry already calls `registerListAgents(ctx)`, so
+  the second row would double-register `list_agents`/`send_message`/`interrupt_agent`.
+  Deleting it matches the upstream reference (`tri-agent`'s patch has exactly one
+  `tool-subagent-control` row).
+
+### The package check tool was updated for the new patch shape
+
+`tools/check-package.mjs` A16 now expects 946 patch lines and 173 `- id:` rows
+(instead of 540 and 40), and the `EXPECTED.version` moved to `0.2.0`.
+`baseline/cordis.patch.yml` was re-derived, so `node tools/verify-patch.mjs`
+reports `verdict: "IDENTICAL"` again.
+
+### Verification extended to dsh 0.2.2-alpha.2
+
+0.1.1 was verified on `0.2.1-alpha.1` — one 0.2.x build. This release was also
+verified on `0.2.2-alpha.2` (`C:\Users\Administrator\AppData\Roaming\DSH\data\versions\0.2.2-alpha.2\`):
+with no exemption in the profile, a `--dump-config` run exits 0, writes 0 bytes
+to stderr, and carries the preset with all 9 persona anchors and all 9
+sub-presets. That is still a claim about mount and anchor paths, not about
+persona bytes or preset behaviour.
+
 ## [0.1.1] — 2026-10-14
 
 **What this release is for.** 0.1.0 declared peer ranges that stopped below dsh 0.2, so a dsh 0.2.x
@@ -229,6 +286,7 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   repositories with separate packages, preset ids and scope mappings, and neither affects the other.
 - A missing or empty persona file fails the mount by design, naming the file in the error.
 
-[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.0

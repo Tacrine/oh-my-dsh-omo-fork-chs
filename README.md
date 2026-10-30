@@ -304,13 +304,13 @@ Upstream names and trademarks belong to their owners.
 
 ## Known issues
 
-- **The declared peer range covers the 0.1.7 line and the 0.2 line, and was verified on one 0.2.x build.** The 24
+- **The declared peer range covers the 0.1.7 line and the 0.2 line, and was verified on two 0.2.x builds.** The 24
   `@deepseek-ai/dsh-*` peers are declared as
   `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`, which keeps the range this
   fork inherited from upstream and adds the 0.2 line. The host decides compatibility with a semver
   range check over those peers, evaluating prereleases, so the range accepts `0.2.0`,
   `0.2.1-alpha.1` and the later prerelease `0.2.2-beta`, and rejects `0.3.0-alpha.1`.
-  **Verified by experiment on `0.2.1-alpha.1`, which is the only 0.2.x build available to us**: with
+  **Verified by experiment on `0.2.1-alpha.1` and `0.2.2-alpha.2`**: with
   no exemption present in the profile, a config dump of this package exits 0, writes **0 bytes to
   stderr**, and carries the preset with all nine persona anchors. That is a claim about the mount and
   the anchor paths, not about the personas' bytes and not about the preset's behaviour: no agent was
