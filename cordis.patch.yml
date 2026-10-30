@@ -195,11 +195,12 @@
             isolate:
               workflowEngine: true
             config:
+              # `dsh-tool-subagent-control` registers the messaging, interruption AND child
+              # discovery tools (`send_message`, `interrupt_agent`, `list_agents`) from one
+              # mount. 0.2.2 no longer exports a `./list-agents` subpath, and a second mount
+              # of the same package here would register the same tool names twice.
               - id: tool-subagent-control
                 name: '@deepseek-ai/dsh-tool-subagent-control'
-
-              - id: tool-subagent-list-agents
-                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
 
               # Fork omits model selection so provider/model stay equal to the parent and
               # the inherited history remains eligible for KV Cache reuse. This preset
@@ -219,33 +220,7 @@
                   toolName: subagent_explore
                   backgroundMode: continuable
                   maxDepth: 1
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'explore.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - write
-                      - edit
-                      - todo_write
-                      - present
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - subagent_explore
-                      - subagent_librarian
-                      - subagent_oracle
-                      - subagent_momus
-                      - subagent_multimodal_looker
-                      - subagent_sisyphus_junior
-                      - subagent_metis
-                      - subagent_hephaestus
+                  agentPreset: omo-explore
 
               - id: tool-subagent-librarian
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -254,33 +229,7 @@
                   toolName: subagent_librarian
                   backgroundMode: continuable
                   maxDepth: 1
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'librarian.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - write
-                      - edit
-                      - todo_write
-                      - present
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - subagent_explore
-                      - subagent_librarian
-                      - subagent_oracle
-                      - subagent_momus
-                      - subagent_multimodal_looker
-                      - subagent_sisyphus_junior
-                      - subagent_metis
-                      - subagent_hephaestus
+                  agentPreset: omo-librarian
 
               - id: tool-subagent-oracle
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -289,33 +238,7 @@
                   toolName: subagent_oracle
                   backgroundMode: continuable
                   maxDepth: 1
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'oracle.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - write
-                      - edit
-                      - todo_write
-                      - present
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - subagent_explore
-                      - subagent_librarian
-                      - subagent_oracle
-                      - subagent_momus
-                      - subagent_multimodal_looker
-                      - subagent_sisyphus_junior
-                      - subagent_metis
-                      - subagent_hephaestus
+                  agentPreset: omo-oracle
 
               - id: tool-subagent-momus
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -324,33 +247,7 @@
                   toolName: subagent_momus
                   backgroundMode: continuable
                   maxDepth: 1
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'momus.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - write
-                      - edit
-                      - todo_write
-                      - present
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - subagent_explore
-                      - subagent_librarian
-                      - subagent_oracle
-                      - subagent_momus
-                      - subagent_multimodal_looker
-                      - subagent_sisyphus_junior
-                      - subagent_metis
-                      - subagent_hephaestus
+                  agentPreset: omo-momus
 
               - id: tool-subagent-multimodal-looker
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -359,11 +256,7 @@
                   toolName: subagent_multimodal_looker
                   backgroundMode: continuable
                   maxDepth: 1
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'multimodal-looker.md'), 'utf8')
-                  toolFilter:
-                    allow:
-                      - read
-                      - read_image
+                  agentPreset: omo-multimodal-looker
 
               - id: tool-subagent-sisyphus-junior
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -372,29 +265,7 @@
                   toolName: subagent_sisyphus_junior
                   backgroundMode: continuable
                   maxDepth: 1
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'sisyphus-junior.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - subagent_explore
-                      - subagent_librarian
-                      - subagent_oracle
-                      - subagent_momus
-                      - subagent_multimodal_looker
-                      - subagent_sisyphus_junior
-                      - subagent_metis
-                      - subagent_hephaestus
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
+                  agentPreset: omo-sisyphus-junior
 
               - id: tool-subagent-metis
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -403,31 +274,7 @@
                   toolName: subagent_metis
                   backgroundMode: continuable
                   maxDepth: 3
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'metis.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - write
-                      - edit
-                      - todo_write
-                      - present
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - subagent_oracle
-                      - subagent_momus
-                      - subagent_multimodal_looker
-                      - subagent_sisyphus_junior
-                      - subagent_metis
-                      - subagent_hephaestus
+                  agentPreset: omo-metis
 
               - id: tool-subagent-hephaestus
                 name: '@deepseek-ai/dsh-tool-subagent'
@@ -436,26 +283,7 @@
                   toolName: subagent_hephaestus
                   backgroundMode: continuable
                   maxDepth: 3
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'hephaestus.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - subagent_momus
-                      - subagent_multimodal_looker
-                      - subagent_sisyphus_junior
-                      - subagent_metis
-                      - subagent_hephaestus
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
+                  agentPreset: omo-hephaestus
 
               # Sisyphus 执行者：与通用 subagent 并存，子代理身份为 Sisyphus（sidecar personas/sisyphus.md）。
               # continuable 与通用 subagent 一致。
@@ -466,21 +294,7 @@
                   toolName: subagent_sisyphus
                   backgroundMode: continuable
                   maxDepth: 3
-                  persona: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'sisyphus.md'), 'utf8')
-                  toolFilter:
-                    deny:
-                      - subagent_fork
-                      - subagent_sisyphus
-                      - ralph
-                      - workflow
-                      - run_workflow
-                      - workflow_list
-                      - workflow_manage
-                      - ask_user_question
-                      - create_goal
-                      - get_goal
-                      - update_goal
-                      - exit_plan_mode
+                  agentPreset: omo-sisyphus
 
               # Production dsh does not install these optional providers. Install the
               # matching Bundle in this Profile and restart the Host, then copy this
@@ -538,3 +352,595 @@
 
           - id: present
             name: '@deepseek-ai/dsh-tool-present'
+
+# ── subagent agent presets ────────────────────────────────────────────────────────────
+#
+# DSH 0.2.2 removed the `persona` and `toolFilter` config fields from
+# `dsh-tool-subagent`: a row that carries either one throws at mount and tells the
+# author to "configure persona and tool plugins in an Agent Preset and select it with
+# `agentPreset` (spawn only)". Each delegated identity therefore lives here as its own
+# `dsh-agent-preset`, and the `tool-subagent-*` rows above only name one.
+#
+# What `toolFilter.deny` used to express is now expressed by which plugins a preset
+# mounts, because a preset's tool catalog IS its plugin list. The old deny lists were
+# the complement of a fixed allow set, so the presets below mount that allow set
+# literally — one template per shape, copied from the verified `tri-agent` bundle:
+#
+#   A. read-only research (explore, librarian, oracle, momus, metis):
+#      shell + fs (write/edit off) + search + jobs + skills + web + compaction.
+#   B. writable execution (sisyphus-junior, hephaestus, sisyphus): A plus todo and present.
+#   C. vision (multimodal-looker): fs (write/edit off) + compaction only.
+#
+# No preset mounts `delegation`, `workflow-ptc`, `tool-workflow`, `tool-ralph`,
+# `tool-ask-user`, `command-goal`, `tool-goal`, `planning`/`plan-mode`, `tool-todo`
+# (except template B) or `present` (except template B) — that absence is the deny list.
+#
+# The nine persona path anchors are unchanged verbatim: they moved from the removed
+# `persona:` field onto `dsh-persona`'s `prefix:`, which is the field 0.2.2 requires
+# for a persona that is not a deployment-wide default. `tools/lib/rewrites.mjs` still
+# counts exactly nine of them, so the port/verify rules and the baseline round trip
+# keep working without a rule change.
+
+- insert:
+    - id: preset-omo-explore
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-explore
+        name: 'Oh My DSH Chs · Explore'
+        description: 只读代码库探索子代理。搜索、阅读、汇报，不写文件、不派子代理。
+        order: 100
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'explore.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-librarian
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-librarian
+        name: 'Oh My DSH Chs · Librarian'
+        description: 只读文档与外部资料研究子代理。查文档、查资料、给出引用，不写文件。
+        order: 101
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'librarian.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-oracle
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-oracle
+        name: 'Oh My DSH Chs · Oracle'
+        description: 只读二次意见与高难度推理审查子代理。只给判断和证据，不写文件。
+        order: 102
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'oracle.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-momus
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-momus
+        name: 'Oh My DSH Chs · Momus'
+        description: 只读对抗式评审子代理。专挑毛病、给出可执行的返工点，不写文件。
+        order: 103
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'momus.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-metis
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-metis
+        name: 'Oh My DSH Chs · Metis'
+        description: 只读需求分析与预检子代理。把模糊需求摊平成可执行断言，不写文件。
+        order: 104
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'metis.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-sisyphus-junior
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-sisyphus-junior
+        name: 'Oh My DSH Chs · Sisyphus Junior'
+        description: 可写执行的聚焦子代理。按已确认的事实做实现，不做研究、不派子代理。
+        order: 105
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'sisyphus-junior.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: true
+              edit: true
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-hephaestus
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-hephaestus
+        name: 'Oh My DSH Chs · Hephaestus'
+        description: 可写执行的深度实现子代理。承接已定稿的多步实现，自己写、自己跑门禁。
+        order: 106
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'hephaestus.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: true
+              edit: true
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-sisyphus
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-sisyphus
+        name: 'Oh My DSH Chs · Sisyphus'
+        description: 可写执行的子代理，身份为 Sisyphus（sidecar personas/sisyphus.md）。
+        order: 107
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'sisyphus.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: true
+              edit: true
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+- insert:
+    - id: preset-omo-multimodal-looker
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: omo-multimodal-looker
+        name: 'Oh My DSH Chs · Multimodal Looker'
+        description: 图像检查子代理。只读文件与图像，产出描述，不写文件。
+        order: 108
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: !!js process.getBuiltinModule('node:fs').readFileSync(process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@tacrine_f/oh-my-dsh-omo-fork-chs/package.json')), 'personas', 'multimodal-looker.md'), 'utf8')
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              read: true
+              readImage: true
+              write: false
+              edit: false
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
