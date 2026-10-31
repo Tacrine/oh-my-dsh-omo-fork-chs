@@ -306,18 +306,23 @@ Upstream names and trademarks belong to their owners.
 
 - **This version requires DSH ≥ 0.2.2.** The 0.2.0 patch selects each of the 9
   subagent presets with `agentPreset`, a field that only the 0.2.2
-  `dsh-tool-subagent` accepts: 0.2.2 removed the `persona` and `toolFilter`
-  fields the old rows used, so on DSH 0.2.1 and earlier the 9 subagents cannot
-  mount. The declared peer range below still admits older 0.2.x builds, so this
-  is a functional requirement rather than a semver constraint. Verified on
-  `0.2.2-alpha.2`; do not run this version on DSH older than 0.2.2.
-- **The declared peer range covers the 0.1.7 line and the 0.2 line, and was verified on two 0.2.x builds.** The 24
+  `dsh-tool-subagent` reads; 0.2.2 also removed the `persona` and `toolFilter`
+  fields the old rows used. On DSH 0.2.1 and earlier the rows still mount, but
+  `agentPreset` is accepted and then never read (the schema merges unknown keys
+  instead of rejecting them), so the child gets **no persona and no tool
+  restriction** and inherits the parent's full toolset: a read-only child such as
+  explore or oracle would silently gain write and subagent-spawning tools. That is
+  a silent privilege escalation, not a mount failure. The declared peer range
+  below still admits older 0.2.x builds, so this is a functional requirement
+  rather than a semver constraint. Verified on `0.2.2-alpha.2`; do not run this
+  version on DSH older than 0.2.2.
+- **The declared peer range covers the 0.1.7 line and the 0.2 line. The range check was verified on two 0.2.x builds, but `0.2.1-alpha.1` only with the 0.1.x patch.** The 24
   `@deepseek-ai/dsh-*` peers are declared as
   `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`, which keeps the range this
   fork inherited from upstream and adds the 0.2 line. The host decides compatibility with a semver
   range check over those peers, evaluating prereleases, so the range accepts `0.2.0`,
   `0.2.1-alpha.1` and the later prerelease `0.2.2-beta`, and rejects `0.3.0-alpha.1`.
-  **Verified by experiment on `0.2.1-alpha.1` and `0.2.2-alpha.2`**: with
+  **Verified by experiment on `0.2.1-alpha.1` (0.1.x patch only) and `0.2.2-alpha.2` (this patch)**: with
   no exemption present in the profile, a config dump of this package exits 0, writes **0 bytes to
   stderr**, and carries the preset with all nine persona anchors. That is a claim about the mount and
   the anchor paths, not about the personas' bytes and not about the preset's behaviour: no agent was

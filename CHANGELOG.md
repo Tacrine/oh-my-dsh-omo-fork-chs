@@ -41,11 +41,15 @@ transport-failure reuse rule. The bundle is now verified on two 0.2.x builds
 rather than one.
 
 **Requires DSH ≥ 0.2.2.** The 9 subagent rows now select their preset with
-`agentPreset`, a field only the 0.2.2 `dsh-tool-subagent` accepts: 0.2.2 removed
-the `persona` and `toolFilter` fields the old rows used, so on DSH 0.2.1 and
-earlier the 9 subagents cannot mount. The declared peer range still admits older
-0.2.x builds, so this is a functional requirement documented here rather than a
-semver constraint.
+`agentPreset`, a field that only the 0.2.2 `dsh-tool-subagent` reads; 0.2.2 also
+removed the `persona` and `toolFilter` fields the old rows used. On DSH 0.2.1 and
+earlier the rows still mount, but `agentPreset` is accepted and then never read
+(the schema merges unknown keys instead of rejecting them), so the child gets
+**no persona and no tool restriction** and inherits the parent's full toolset: a
+read-only child such as explore or oracle would silently gain write and
+subagent-spawning tools. That is a silent privilege escalation, not a mount
+failure. The declared peer range still admits older 0.2.x builds, so this is a
+functional requirement documented here rather than a semver constraint.
 
 Nothing in the preset's behaviour changes — the persona prose and the
 orchestration doctrine are unchanged — but the patch grows from 540 to 946
