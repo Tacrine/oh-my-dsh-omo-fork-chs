@@ -1,94 +1,88 @@
 # oh-my-dsh-omo-fork-chs
 
 [![npm version](https://img.shields.io/npm/v/@tacrine_f/oh-my-dsh-omo-fork-chs)](https://www.npmjs.com/package/@tacrine_f/oh-my-dsh-omo-fork-chs)
-[![license: SUL-1.0 (content) + MIT (packaging)](https://img.shields.io/badge/license-SUL--1.0_(content)_%2B_MIT_(packaging)-orange)](#license)
-[![node](https://img.shields.io/badge/node-%5E22.19.0%20%7C%7C%20%3E%3D24.0.0-blue)](#peer-model)
+[![license: SUL-1.0 (content) + MIT (packaging)](https://img.shields.io/badge/license-SUL--1.0_(content)_%2B_MIT_(packaging)-orange)](#许可)
+[![node](https://img.shields.io/badge/node-%5E22.19.0%20%7C%7C%20%3E%3D24.0.0-blue)](#peer-模型)
 
-The **Simplified-Chinese unofficial fork** of the `tri-agent` agent preset, packaged for
-[DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh) as a publishable Cordis
-bundle. Its preset id is `omo-fork-chs` and its `order` is `11`, so it sits beside `tri-agent`
-rather than replacing it: this package **does not change the default preset** and does not change
-which preset a session picks. Only the persona prose is translated; the toolchain composition and
-the orchestration doctrine are the upstream design.
+`tri-agent` agent preset 的**简体中文非官方 fork**，面向
+[DeepSeek Harness](https://www.npmjs.com/package/@deepseek-ai/dsh) 打包为可发布的 Cordis bundle。
+它的 preset id 是 `omo-fork-chs`，`order` 是 `11`，因此它与 `tri-agent` **并存**而不是取而代之：
+本包**不改变默认 preset**，也不改变会话选中哪一个 preset。只有 persona 正文被翻译；工具链组成与
+编排 doctrine 都沿用上游设计。
 
-The preset gives an agent a two-mode identity and a full coding toolchain:
+这个 preset 给 agent 一套「双身份 + 完整编码工具链」：
 
-- **Atlas** is the standing orchestrator. It does not implement, verify, or review; it reads the
-  plan, the notepad and the evidence, does the bookkeeping, and delegates every unit of work to a
-  named subagent.
-- **Prometheus** is the planning doctrine. While a session is in plan mode (`/plan`), the identity
-  swaps to Prometheus for the whole planning session and then swaps back. A single plugin,
-  `plan-aware-persona.mjs`, owns the one `deployment:persona-prefix` slot and chooses the text per
-  assembly by reading the public `plan` session projection. The `planMode` service is deliberately
-  not injected: it lives inside the `isolate: { planMode: true }` realm, so injecting it from
-  outside would never resolve.
+- **Atlas** 是常驻的指挥者。它不亲自实现、验证或审查；它读计划、notepad 与证据，做簿记，并把每一个
+  工作单元委派给具名子代理。
+- **Prometheus** 是规划 doctrine。当会话进入 plan 模式（`/plan`）时，身份在整个规划会话期间切换为
+  Prometheus，结束后切回。单个插件 `plan-aware-persona.mjs` 占用唯一的 `deployment:persona-prefix`
+  槽位，通过读取公开的 `plan` session projection 在每次装配时选择文本。`planMode` service 被刻意
+  **不**注入：它位于 `isolate: { planMode: true }` realm 内部，从外部注入永远不会解析成功。
 
-Around that identity the preset mounts the coding toolchain: filesystem and shell tools, background
-jobs, skills, goals, plan mode, compaction, delegation and workflows. The declaration carries 40
-`- id:` rows, of which 9 are anchored subagent rows (explore, librarian, oracle, momus,
-multimodal-looker, sisyphus-junior, metis, hephaestus, sisyphus). The package ships **11 persona
-files**; the plugin reads `atlas.md` and `prometheus.md` itself, and the other 9 are anchored to the
-subagent rows.
+在身份之外，preset 挂载了编码工具链：文件系统与 shell 工具、后台任务、skills、goals、plan mode、
+compaction、委派与 workflows。该 declaration 共 40 条 `- id:` row，其中 9 条是锚定的子代理 row
+（explore、librarian、oracle、momus、multimodal-looker、sisyphus-junior、metis、hephaestus、
+sisyphus）。本包附带 **11 个 persona 文件**；插件自身读取 `atlas.md` 与 `prometheus.md`，另外 9 个
+锚定在子代理 row 上。
 
-## What ships
+## 随包内容
 
-| File | Purpose |
+| 文件 | 用途 |
 | --- | --- |
-| `cordis.patch.yml` | The published bundle patch: the preset declaration (`id: preset-omo-fork-chs`, `config.id: omo-fork-chs`, `config.name: 'Oh My DSH Chs - OMO Fork'`, `order: 11`) and its `plugins:` list. 540 lines, 11 rewritten sites. |
-| `plan-aware-persona.mjs` | The package entry that registers the plan-aware persona prefix and the configured suffix. Exported as `./persona`. |
-| `index.js` | The package root. It is intentionally empty: the bundle's behaviour lives in `cordis.patch.yml` and in `./persona`. |
-| `personas/` | 11 persona documents, translated into Simplified Chinese. |
-| `baseline/` | A frozen snapshot of the pre-port patch plus a sidecar that explains what it does and does not prove. |
-| `tools/` | The port, verification, baseline and package-check CLIs. |
-| `test/` | The zero-dependency test suite, run with `node --test`. |
-| `LICENSE-MIT.md` | The MIT terms that cover our own work. |
-| `LICENSE-SUL-1.0.md` | The verbatim upstream Sustainable Use License 1.0 terms, which cover the upstream-derived content. |
-| `NOTICE.md` | The modification notice, the upstream attribution, and the machine-readable license scope mapping. |
+| `cordis.patch.yml` | 已发布的 bundle patch：preset 声明（`id: preset-omo-fork-chs`、`config.id: omo-fork-chs`、`config.name: 'Oh My DSH Chs - OMO Fork'`、`order: 11`）及其 `plugins:` 列表。共 540 行，11 处被改写。 |
+| `plan-aware-persona.mjs` | 包入口，注册 plan-aware persona 前缀与配置的 suffix。以 `./persona` 导出。 |
+| `index.js` | 包根。它刻意留空：bundle 的行为在 `cordis.patch.yml` 与 `./persona` 里。 |
+| `personas/` | 11 个 persona 文件，已译为简体中文。 |
+| `baseline/` | 移植前 patch 的冻结快照，外加一份说明它能证明什么、不能证明什么的 sidecar。 |
+| `tools/` | 移植、验证、baseline 与包结构检查的命令行工具。 |
+| `test/` | 零依赖测试套件，用 `node --test` 运行。 |
+| `LICENSE-MIT.md` | 覆盖我们自己作品的 MIT 条款。 |
+| `LICENSE-SUL-1.0.md` | 上游 Sustainable Use License 1.0 的逐字副本，覆盖上游衍生内容。 |
+| `NOTICE.md` | 修改声明、上游署名，以及机器可读的许可范围映射。 |
 
-The patch mounts the following peer packages, which DSH provides:
+该 patch 挂载了下列由 DSH 提供的 peer 包：
 
-`@deepseek-ai/dsh-agent-preset`, `dsh-agent-instructions`, `dsh-tool-bash`, `dsh-tool-pwsh`,
-`dsh-tool-fs`, `dsh-tool-fs-search`, `dsh-tool-jobs`, `dsh-skill-filesystem`, `dsh-tool-skill`,
-`dsh-command-goal`, `dsh-tool-goal`, `dsh-plan-mode`, `dsh-compaction-basic`, `dsh-command-compact`,
-`dsh-compaction-tool-result-pruner`, `dsh-tool-subagent-control`, `dsh-tool-subagent`,
-`dsh-workflow-ptc`, `dsh-tool-workflow`, `dsh-tool-ralph`, `dsh-tool-ask-user`, `dsh-tool-todo`,
-`dsh-tool-web`, `dsh-tool-present`, plus `@deepseek-ai/cordis`. That is 25 peer dependencies in
-total.
+`@deepseek-ai/dsh-agent-preset`、`dsh-agent-instructions`、`dsh-tool-bash`、`dsh-tool-pwsh`、
+`dsh-tool-fs`、`dsh-tool-fs-search`、`dsh-tool-jobs`、`dsh-skill-filesystem`、`dsh-tool-skill`、
+`dsh-command-goal`、`dsh-tool-goal`、`dsh-plan-mode`、`dsh-compaction-basic`、`dsh-command-compact`、
+`dsh-compaction-tool-result-pruner`、`dsh-tool-subagent-control`、`dsh-tool-subagent`、
+`dsh-workflow-ptc`、`dsh-tool-workflow`、`dsh-tool-ralph`、`dsh-tool-ask-user`、`dsh-tool-todo`、
+`dsh-tool-web`、`dsh-tool-present`，外加 `@deepseek-ai/cordis`。合计 25 条 peer 依赖。
 
-## Install
+## 安装
 
-Installation is **two explicit steps**. Step 1 installs the dependency; step 2 tells the profile to
-load it. Both are required, and `dsh` is not assumed to be on your `PATH`.
+安装是**两个显式步骤**。第 1 步安装依赖；第 2 步告诉 profile 去加载它。两步都必需，并且不假设
+`dsh` 在 `PATH` 上。
 
-### Step 1: install the package into the profile
+### 第 1 步：把包安装进 profile
 
-Point the CLI at your DSH checkout's bin file, and forward the install to the profile:
+把 CLI 指向你的 DSH checkout 的 bin 文件，并把安装转发给 profile：
 
 ```powershell
 node "<dsh bin>" plugin --profile <profile> add -w @tacrine_f/oh-my-dsh-omo-fork-chs
 ```
 
-For example, on a checkout whose runtime is `<dsh runtime>`, `<dsh bin>` is
-`<dsh runtime>\@deepseek-ai\dsh\lib\bin.js`, so:
+例如，某个 checkout 的 runtime 是 `<dsh runtime>`，那么 `<dsh bin>` 就是
+`<dsh runtime>\@deepseek-ai\dsh\lib\bin.js`，于是：
 
 ```powershell
 node "<dsh runtime>\@deepseek-ai\dsh\lib\bin.js" plugin --profile web add -w @tacrine_f/oh-my-dsh-omo-fork-chs
 ```
 
-This runs pnpm inside `$DSH_HOME\profiles\<profile>\`, so it writes a `dependencies` entry. **It
-does not touch `dsh.profile.bundles`.**
+它会在 `$DSH_HOME\profiles\<profile>\` 内运行 pnpm，因此会写入一条 `dependencies` 记录。**它不会
+改动 `dsh.profile.bundles`。**
 
-### Step 2: add the package to `dsh.profile.bundles` and restart
+### 第 2 步：把包加入 `dsh.profile.bundles` 并重启
 
-Open `$DSH_HOME\profiles\<profile>\package.json` and add the package name to the profile's
-`dsh.profile.bundles` array:
+打开 `$DSH_HOME\profiles\<profile>\package.json`，把包名加入该 profile 的 `dsh.profile.bundles`
+数组：
 
 ```jsonc
 {
   "dsh": {
     "profile": {
       "bundles": [
-        // ...your existing bundles...
+        // ...你已有的 bundle...
         "@tacrine_f/oh-my-dsh-omo-fork-chs"
       ]
     }
@@ -96,32 +90,28 @@ Open `$DSH_HOME\profiles\<profile>\package.json` and add the package name to the
 }
 ```
 
-Then **restart the Host and start a new session.** A live agent keeps the composition it booted
-with, so an already-running session will not pick the preset up; a new session is required.
+然后**重启 Host 并新开一个会话。** 正在运行的 agent 保留它启动时的 composition，所以已经跑着的会话
+不会加载这个 preset；必须新开会话。
 
-### Verify the install composed
+### 验证安装已生效
 
 ```powershell
 $env:DSH_HOME = "<dsh home>"
 node "<dsh bin>" --profile <profile> --dump-config
 ```
 
-The output should contain a `preset-omo-fork-chs` row whose `name` is
-`@deepseek-ai/dsh-agent-preset`, whose `config.id` is `omo-fork-chs`, whose `config.name` is
-`'Oh My DSH Chs - OMO Fork'` and whose `config.order` is `11`, plus nine `personas` expressions
-resolving through this package. `--dump-config` prints the raw `!!js` expression text, so the nine
-anchors appear as the `resolve('<pkg>/package.json')` form rather than as resolved filesystem
-paths.
+输出中应当有一条 `preset-omo-fork-chs` row，其 `name` 为 `@deepseek-ai/dsh-agent-preset`，
+`config.id` 为 `omo-fork-chs`，`config.name` 为 `'Oh My DSH Chs - OMO Fork'`，`config.order` 为
+`11`，另有九条经由本包解析的 `personas` 表达式。`--dump-config` 打印的是原始 `!!js` 表达式文本，
+所以那九条锚点呈现为 `resolve('<pkg>/package.json')` 形式，而不是解析后的文件系统路径。
 
-## Post-install edits you may need
+## 安装后你可能需要自己做的改动
 
-The published patch ships **only** the portable preset declaration. Two things that were local to
-the machine this fork came from are deliberately **not** shipped, so you may want to re-add them
-yourself:
+已发布的 patch **只**包含可移植的 preset 声明。有两样东西原本属于产出这个 fork 的那台机器，它们被
+刻意**不**发布，因此你可能想自己把它们加回去：
 
-1. **Making `omo-fork-chs` your default preset.** The published patch does **not** set a default
-   preset, and this package never forces one. If you want this preset to be the default, set the
-   registry row yourself in your own profile or overlay patch:
+1. **把 `omo-fork-chs` 设成默认 preset。** 已发布的 patch **不**设置默认 preset，本包也从不强加
+   一个。如果你希望它成为默认，请在你自己的 profile 或 overlay patch 里自行设置 registry row：
 
    ```yaml
    - id: agent-preset-registry
@@ -129,259 +119,202 @@ yourself:
        default: omo-fork-chs
    ```
 
-   (`@deepseek-ai/dsh-web-app` inserts that row with `default: standard`; the row above replaces the
-   whole config, so only the default changes.)
+   （`@deepseek-ai/dsh-web-app` 会插入同一条 row，但 `default: standard`；上面这条会替换整个
+   config，所以只有 default 改变。）
 
-2. **Giving `subagent_multimodal_looker` a model route.** The bundle this fork was derived from
-   carried a machine-specific `provider` and `model` route for that row, and that route is **not
-   portable**, so the published patch carries no `agentOptions` row at all. Without one the
-   multimodal subagent inherits the deployment's route. To pin one, add an `agentOptions` block to
-   that row in your own overlay:
+2. **给 `subagent_multimodal_looker` 一条模型路由。** 产出这个 fork 的 bundle 曾为那条 row 带一条
+   机器专属的 `provider` 与 `model` 路由，而那条路由**不可移植**，所以已发布的 patch 完全不包含
+   `agentOptions` row。没有它时，多模态子代理会继承 deployment 的路由。若要固定一条，请在你自己的
+   overlay 里给那条 row 加一个 `agentOptions` 块：
 
    ```yaml
    - id: tool-subagent-multimodal-looker
      name: '@deepseek-ai/dsh-tool-subagent'
      config:
-       # ...the shipped config...
+       # ...已发布的 config...
        agentOptions:
          provider: <your provider>
          model: <your model>
    ```
 
-## Failure mode: it fails loud on purpose
+## 失败模式：刻意 fail loud
 
-`plan-aware-persona.mjs` reads its persona prose from disk at mount time. A **missing or empty
-persona file fails the mount**, naming the file in the error:
+`plan-aware-persona.mjs` 在挂载时从磁盘读取自己的 persona 正文。**persona 文件缺失或为空会让挂载
+失败**，并在错误里点出文件名：
 
 ```
 plan-aware-persona: cannot read persona "file:///.../personas/atlas.md"
 plan-aware-persona: persona "file:///.../personas/atlas.md" is empty
 ```
 
-That is deliberate. An empty persona prefix would silently strip the agent's identity, so a mount
-error that names the file is far easier to act on than an agent that quietly lost its instructions.
+这是刻意的。空的 persona 前缀会悄悄剥掉 agent 的身份，所以一条点出文件名的挂载错误，远比一个安静地
+丢掉自己指令的 agent 更容易处理。
 
-## Peer model
+## Peer 模型
 
-Every `@deepseek-ai/*` package the patch mounts is declared as a **`peerDependency`**, never as a
-regular `dependency`. DSH provides them; the bundle must not install its own copies. Peer ranges are
-declared as `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`, which keeps the
-0.1.7 line and adds the 0.2 line (and `@deepseek-ai/cordis` as `^4.0.1`). The package declares 25
-peers and **no** runtime dependencies and **no** dev dependencies, so nothing has to be installed
-for the tests or for the zero-dependency part of the check chain.
+patch 挂载的每个 `@deepseek-ai/*` 包都声明为 **`peerDependency`**，而不是普通 `dependency`。它们由
+DSH 提供；bundle 不得安装自己的副本。peer 范围声明为
+`>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`，既保留 0.1.7 线，又加入
+0.2 线（`@deepseek-ai/cordis` 为 `^4.0.1`）。本包声明 25 条 peer，且**没有**运行期依赖、**没有**开发依赖，因此测试与检查链中零依赖
+的那部分都不需要安装任何东西。
 
-The DSH profile's `.npmrc` sets `auto-install-peers=false`, so these peers are **declarative only**:
-pnpm will not fetch them, and a missing peer surfaces as a resolution error at mount time rather
-than being silently installed.
+DSH profile 的 `.npmrc` 设置了 `auto-install-peers=false`，所以这些 peer 是**纯声明式**的：pnpm 不会
+去拉取它们，缺失的 peer 会在挂载时表现为解析错误，而不是被悄悄装上。
 
-## Verification
+## 验证
 
-Everything below runs from the repository root with **no install**, except `check:full`, which needs
-a runtime and is marked as such.
+下面全部在仓库根目录运行，且**无需安装**，只有 `check:full` 例外，它需要 runtime，并已如此标注。
 
 ```powershell
-# 1. The test suite. Zero dependencies. 56 tests.
+# 1. 测试套件。零依赖。56 个测试。
 npm run test
 
-# 2. The check chain. Zero dependencies, no runtime needed.
+# 2. 检查链。零依赖，不需要 runtime。
 npm run check
 
-# 3. The same check with the deep YAML comparison enabled. Needs a runtime.
+# 3. 同一条检查，但启用 YAML 深比较。需要 runtime。
 npm run setup:verify
 $env:DSH_RUNTIME = "<absolute path to a node_modules holding js-yaml and @deepseek-ai/cordis-plugin-include>"
 npm run check:full
 
-# 4. Regenerate the frozen baseline from the published patch and check it.
+# 4. 从已发布的 patch 重新推导冻结的 baseline 并检查它。
 npm run baseline
 npm run baseline -- --check
 
-# 5. Re-port the published patch from a source patch directory.
+# 5. 从某个源 patch 目录重新移植已发布的 patch。
 npm run port -- --src <dir holding cordis.patch.yml>
 ```
 
-What each one proves:
+每一条各自证明什么：
 
-- **`npm run test`** runs the `node:test` suite: the three forward rewrites, the inverse rewrites
-  and their round trip, the argument parsers, the machine-path pattern from both sides, the
-  zero-byte guard, and the package check's negative paths. It is 56 tests and it needs nothing
-  installed.
-- **`npm run check`** is `node tools/check-package.mjs && node tools/verify-patch.mjs`. The first
-  runs 22 structural and license assertions (manifest identity, the four `exports`, the single
-  self-reference row, the nine persona anchors and their files, the `files[]` coverage, the eleven
-  persona byte counts, the license pointers, the three license documents, the paths that must never
-  ship, the untracked-file check over every directory `files[]` lists and the untracked root files
-  npm auto-includes, the upstream fingerprint
-  when one is supplied, the modification-notice claims, the license scope mapping and the per-entry
-  anchors
-  that pin each scope block to the content it claims, the machine-path
-  scan and the classes that govern where the pre-port package name may appear, the SHA256 of the
-  two modules the package copies out of this repository, the internal markdown anchors of every
-  document that carries one, and the patch's
-  shape). The second proves the published patch
-  still equals what the three documented rewrites compute from the frozen baseline, and reports
-  `verdict: "IDENTICAL"` with 11 rewrite sites. Both are **zero-dependency**, so they pass in a
-  clean clone with no install.
-- **`npm run check:full`** is `node tools/verify-patch.mjs` on its own. With `DSH_RUNTIME` pointing
-  at an absolute `node_modules` that holds `js-yaml` and `@deepseek-ai/cordis-plugin-include`, the
-  verifier parses both documents with the real entry-list dialect and compares them structurally,
-  reporting `yamlCompare: "ok"` and `sites.length` of 11. **Without a runtime it reports
-  `yamlCompare: "skipped"` and still exits 0**, which is why the exit code alone is not evidence
-  here: assert on the field. That is also why this step is separate from `check`, and why
-  `npm run setup:verify` exists: it installs the runtime into `.dsh-verify/` without adding a
-  dependency to this package. The tool reads `DSH_RUNTIME` itself rather than taking a `--runtime`
-  flag, because Windows npm runs scripts through `cmd.exe` and POSIX shells expand variables
-  differently, so one script string would behave differently on the two platforms.
-- **`npm run baseline`** re-derives `baseline/cordis.patch.yml` from the published patch by
-  applying the inverse of the three rewrites, and `-- --check` compares the committed baseline
-  against a freshly derived copy, printing the differing lines and exiting non-zero on drift.
-- **`npm run port -- --src <dir>`** applies the three rewrites to the `cordis.patch.yml` in `<dir>`
-  and writes the result. `--src` has **no default**, because the only honest default would be a
-  machine-local directory; the error message names the baseline directory as the alternative
-  source, and `npm run port -- --src baseline` reproduces the committed patch byte for byte.
+- **`npm run test`** 运行 `node:test` 套件：三组正向改写、反向改写及其往返、参数解析器、从两侧检验
+  机器路径模式、零字节守卫，以及包检查的失败路径。共 56 个测试，不需要安装任何东西。
+- **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。前者运行 22 条
+  结构与许可断言（manifest 身份、四个 `exports`、唯一一条自引用 row、九条 persona 锚点及其文件、
+  `files[]` 覆盖、11 个 persona 的字节数、许可指针、三份许可文档、绝不允许进入 tarball 的路径，
+  对 `files[]` 所列每个目录的未跟踪文件检查，以及 npm 无论 `files[]` 如何都会自动收录的根目录文件、
+  提供了上游指纹时的比对、
+  修改声明的各项主张、许可范围映射及逐条把每个范围块钉到其所声明内容的锚点、机器路径扫描、
+  约束移植前包名出现位置的类、本仓库向消费者复制的两个模块的 SHA256、
+  每份带内部锚点的文档中锚点是否都能解析到标题，以及 patch 的形状）。
+  后者证明已发布的 patch 仍然等于三项已记录改写从冻结 baseline 算出的结果，并报告
+  `verdict: "IDENTICAL"` 与 11 处改写点。两者都**零依赖**，因此在干净克隆里、无需安装即可通过。
+- **`npm run check:full`** 就是单独运行 `node tools/verify-patch.mjs`。当 `DSH_RUNTIME` 指向一个包含
+  `js-yaml` 与 `@deepseek-ai/cordis-plugin-include` 的绝对 `node_modules` 时，校验器会用真正的
+  entry-list dialect 解析两份文档并做结构化比对，报告 `yamlCompare: "ok"` 与 `sites.length` 为 11。
+  **没有 runtime 时它报告 `yamlCompare: "skipped"` 并仍然以 0 退出**，所以在这里只看退出码不算证据：
+  必须断言字段。这也是为什么这一步与 `check` 分开，以及为什么存在 `npm run setup:verify`：它把
+  runtime 装进 `.dsh-verify/`，而不给本包增加依赖。该工具自己读取 `DSH_RUNTIME`，而不是接受一个
+  `--runtime` flag，因为 Windows 上 npm 通过 `cmd.exe` 运行脚本，而 POSIX shell 会展开变量，同一个
+  脚本字符串在两个平台上的行为会不同。
+- **`npm run baseline`** 通过对三项改写施加逆变换，从已发布的 patch 重新推导出
+  `baseline/cordis.patch.yml`；`-- --check` 把已提交的 baseline 与一份新推导出的副本比对，打印出差异行
+  并在出现漂移时以非零退出。
+- **`npm run port -- --src <dir>`** 对 `<dir>` 里的 `cordis.patch.yml` 施加三项改写并写出结果。
+  `--src` **没有默认值**，因为唯一诚实的默认值会是一个机器专属目录；错误消息把 baseline 目录作为
+  替代来源点出来，而 `npm run port -- --src baseline` 会逐字节复现已提交的 patch。
 
-> **`npm run check` and `npm test` must run inside a git checkout.** Three of the package check's
-> assertions (the license scope
-> mapping, the machine-path scan, and the classes that govern where the pre-port package name may
-> appear) are defined over the set of **tracked**
-> files, so the tool asks `git ls-files` for that set. If git cannot answer, the tool fails with
-> `run inside a git checkout` rather than silently skipping those three. `npm test` needs the same
-> checkout for the same reason: its last case runs the package check against the real tree, so
-> unpacking the tarball outside a repository fails there too. A consumer who unpacks the
-> published tarball outside a repository will therefore see that error, and it is deliberate: a
-> mapping check that reports success for work it never did is worse than no check at all. The
-> published package includes the tools and the test suite so the chain can be re-run from a clone.
+> **`npm run check` 与 `npm test` 都必须在 git checkout 内运行。** 包检查的三条断言（许可范围映射、
+> 机器路径扫描，以及约束
+> 移植前包名出现位置的类）都定义在**受版本跟踪的**文件集合之上，所以该工具向 `git ls-files` 索取这个
+> 集合。如果 git 无法回答，工具会以 `run inside a git checkout` 失败，而不是悄悄跳过这三条。`npm test`
+> 出于同样的原因也需要检出：它的最后一个用例会针对真实目录树运行包检查，所以在仓库之外解包同样会失败。
+> 因此，
+> 在仓库之外解包已发布 tarball 的使用者会看到这个错误，而这是刻意的：一条对从未做过的工作报告成功的
+> 映射检查，比没有检查更糟。已发布的包里包含这些工具与测试套件，所以这条链可以从克隆里重跑。
 
-> **Counting a document's lines in PowerShell: `Measure-Object -Line` counts non-empty lines
-> only.** `(Get-Content README.md | Measure-Object -Line).Lines` reports **311** for this file,
-> while `(Get-Content README.md).Count` reports **374** — the same file, two readings, and the
-> difference is 63 blank lines that the first command never saw. Nothing in the command's name or
-> output says so, so a length check built on it silently under-counts any file with blank lines in
-> it. Use `.Count`, or `[IO.File]::ReadAllLines(path).Count`, when you want the raw line count. The
-> same trap has already produced wrong readings of a plan file in this repository twice, from two
-> separate contributors, because the two numbers look equally plausible when you have not measured
-> both.
+## 许可
 
-## License
+本仓库是**双许可**的，且两个许可不是你可以二选一的关系：每个文件都恰好被其中一个覆盖。它**不是**
+仅 MIT。
 
-This repository is **dual-licensed**, and the two licenses are not alternatives you may choose
-between: each file is covered by exactly one of them. It is **not** MIT-only.
+范围映射与 [`NOTICE.md`](./NOTICE.md) 中的两个块一致：
 
-The scope mapping, matching the two blocks in [`NOTICE.md`](./NOTICE.md):
-
-- [`LICENSE-SUL-1.0.md`](./LICENSE-SUL-1.0.md) covers the upstream-derived content:
-  `personas/`, `cordis.patch.yml`, `plan-aware-persona.mjs`, `index.js` and
-  `baseline/cordis.patch.yml`.
-- [`LICENSE-MIT.md`](./LICENSE-MIT.md) covers our own work: `tools/`, `test/`, `.github/`,
-  `baseline/README.md`, `package.json`, `.gitignore`, `.gitattributes`, `README.md`, `README.zh.md`,
+- [`LICENSE-SUL-1.0.md`](./LICENSE-SUL-1.0.md) 覆盖上游衍生内容：`personas/`、`cordis.patch.yml`、
+  `plan-aware-persona.mjs`、`index.js` 与 `baseline/cordis.patch.yml`。
+- [`LICENSE-MIT.md`](./LICENSE-MIT.md) 覆盖我们自己的作品：`tools/`、`test/`、`.github/`、
+  `baseline/README.md`、`package.json`、`.gitignore`、`.gitattributes`、`README.md`、
   `CHANGELOG.md`
-  and `NOTICE.md`.
-- [`NOTICE.md`](./NOTICE.md) is the authoritative declaration: the modification notice, the upstream
-  attribution, and the machine-readable scope mapping, including the match rule that decides which
-  block covers each tracked path. In any disagreement between this README and `NOTICE.md`, the
-  notice wins.
+  与 `NOTICE.md`。
+- [`NOTICE.md`](./NOTICE.md) 是权威声明：修改声明、上游署名，以及机器可读的许可范围映射，其中包含
+  决定每个受跟踪路径归哪个块的匹配规则。若本 README 与 `NOTICE.md` 有任何不一致，以 NOTICE 为准。
 
-The upstream terms are the **Sustainable Use License 1.0**, held verbatim in
-[`LICENSE-SUL-1.0.md`](./LICENSE-SUL-1.0.md). SUL-1.0 is a **source-available** license. It is
-**not** an OSI-approved open source license, and this repository does not claim otherwise.
+上游条款是 **Sustainable Use License 1.0**，逐字保存在
+[`LICENSE-SUL-1.0.md`](./LICENSE-SUL-1.0.md) 中。SUL-1.0 是一个 **source-available** 许可。它
+**不是** OSI 批准的开源许可，本仓库也不作此主张。
 
-The upstream terms permit use, copying, distribution and derivative works only for your own
-internal business purposes, or for non-commercial or personal use, and they permit distribution
-only if you do so **free of charge** and for **non-commercial** purposes. This package is
-distributed under exactly those terms: free of charge, non-commercial, and not for resale. The
-upstream license is **not sublicensable**, which is why the MIT license covering our own files
-cannot be extended over the upstream-derived ones, and why `LICENSE-SUL-1.0.md` must travel with
-every copy.
+上游条款只允许你为自己的内部业务目的，或为非商业、个人用途，去使用、复制、分发和制作衍生作品；
+并且只允许你在**免费**且**非商业**的前提下分发。本包正是按这些条款分发：免费、非商业、不可转售。
+上游许可是**不可再授权**的，这就是为什么覆盖我们自己文件的 MIT 许可无法延伸到上游衍生的文件之上，
+也是为什么 `LICENSE-SUL-1.0.md` 必须随每一份副本一起传播。
 
-One carve-out applies to the MIT scope: the files under `tools/` and `test/` are our own work and
-are licensed under MIT, but they embed verbatim fragments of the upstream bundle patch expressions,
-quoted so that the patch can be generated and verified. Those **quoted fragments** remain subject to
-the upstream SUL-1.0 terms and are not relicensed by the MIT license that covers the surrounding
-code. The same carve-out is stated in `NOTICE.md`, and the two documents agree.
+MIT 范围上有一条界定：`tools/` 与 `test/` 下的文件是我们自己的作品、按 MIT 授权，但它们内嵌了上游
+bundle patch 表达式的**逐字片段**，以便生成和校验该 patch。那些**逐字片段**仍受上游 SUL-1.0 条款
+约束，并不会因为周围代码适用 MIT 而被重新授权。同一条界定也写在 `NOTICE.md` 里，两份文档一致。
 
-This repository is an **unofficial fork**. It is **not affiliated** with, endorsed by, or sponsored
-by the upstream project or its author, and nothing here implies any affiliation or endorsement.
-Upstream names and trademarks belong to their owners.
+本仓库是一个**非官方 fork**。它**未获**上游项目及其作者的背书、赞助或关联，这里也没有任何内容暗示
+存在关联或背书。上游名称与商标归其所有者所有。
 
-## Known issues
+## 已知问题
 
-- **This version requires DSH ≥ 0.2.2.** The 0.2.0 patch selects each of the 9
-  subagent presets with `agentPreset`, a field that only the 0.2.2
-  `dsh-tool-subagent` reads; 0.2.2 also removed the `persona` and `toolFilter`
-  fields the old rows used. On DSH 0.2.1 and earlier the rows still mount, but
-  `agentPreset` is accepted and then never read (the schema merges unknown keys
-  instead of rejecting them), so the child gets **no persona and no tool
-  restriction** and inherits the parent's full toolset: a read-only child such as
-  explore or oracle would silently gain write and subagent-spawning tools. That is
-  a silent privilege escalation, not a mount failure. The declared peer range
-  below still admits older 0.2.x builds, so this is a functional requirement
-  rather than a semver constraint. Verified on `0.2.2-alpha.2`; do not run this
-  version on DSH older than 0.2.2.
-- **The declared peer range covers the 0.1.7 line and the 0.2 line. The range check was verified on two 0.2.x builds, but `0.2.1-alpha.1` only with the 0.1.x patch.** The 24
-  `@deepseek-ai/dsh-*` peers are declared as
-  `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`, which keeps the range this
-  fork inherited from upstream and adds the 0.2 line. The host decides compatibility with a semver
-  range check over those peers, evaluating prereleases, so the range accepts `0.2.0`,
-  `0.2.1-alpha.1` and the later prerelease `0.2.2-beta`, and rejects `0.3.0-alpha.1`.
-  **Verified by experiment on `0.2.1-alpha.1` (0.1.x patch only) and `0.2.2-alpha.2` (this patch)**: with
-  no exemption present in the profile, a config dump of this package exits 0, writes **0 bytes to
-  stderr**, and carries the preset with all nine persona anchors; the `0.2.2-alpha.2` run was against
-  a profile that registers this package as a bundle. That is a claim about the mount and the anchor
-  paths, not about the personas' bytes and not about the preset's behaviour: no agent was invoked,
-  and a persona that still existed but had been truncated would pass the same check.
-  **`0.3.0-alpha.1` is the re-entry condition**: a future runtime in that range is rejected again,
-  with the same incompatibility warning on stderr and the same exit 0, so the failure stays silent
-  unless you read stderr. On such a version you must either run a dsh inside the declared range, or
-  grant the exact-version exemption with
-  `dsh plugin allow-version "<pkg>@<version>" --dsh-version <version> --accept-risk`. That exemption
-  is the host's own escape hatch and carries the risk the host itself warns about, so it is a
-  deliberate acceptance of risk rather than a supported configuration. **It is still needed for cases
-  this widening does not cover**: the published `0.1.0` on npm carries the old narrower range, and any
-  future 0.3.x runtime will need it. `@deepseek-ai/cordis` is declared at `^4.0.1` as well, but the
-  host never tests it — it only evaluates peers named `@deepseek-ai/dsh` or `@deepseek-ai/dsh-*` —
-  so that entry is not a compatibility constraint the host enforces.
-- **`baseline/` proves reproducibility, not correctness.** The baseline is a frozen snapshot of the
-  pre-port patch, committed so the round trip can be checked anywhere. It is byte-identical to the
-  source patch, and the derivation proves the port is **reproducible**: the published patch and the
-  baseline are related by exactly the three documented rewrites and nothing else. It does **not**
-  prove the content is correct. If the source patch had been wrong, the derivation would faithfully
-  reproduce that wrongness and every check here would still pass.
-- **The prior evidence for content correctness is not shipped.** That evidence is the
-  `omo-fork-chs-*` evidence set produced by the Simplified-Chinese port work, whose
-  `verify-omo-fork-chs-bundle` checker reported **`FAITHFUL`** and whose `verify-omo-fork-chs-deport`
-  checker reported **`CLEAN`**. Those checkers are **machine-local**: they run against directories
-  that exist only on the machine the port was prepared on, and they are deliberately not shipped
-  with this package.
-- **The vendored persona prose carries machine-local paths.** Ten lines across three persona
-  documents name absolute paths from the machine the localization work was done on. They violate
-  this repository's rule that no committed file names a machine absolute path, and they are
-  tolerated only because byte identity with the source bundle is the harder constraint. The affected
-  lines are enumerated in `tools/check-package.mjs`, whose scan accepts a match only at those exact
-  positions. `NOTICE.md` records this as modification entry 8. The paths are not reproduced here
-  because this document is itself covered by that scan.
-- **This repository coexists with the English fork.** `Tacrine/oh-my-dsh-omo-fork` is a separate
-  repository with its own package, its own preset id and its own scope mapping. Neither repository
-  affects the other: they share the upstream lineage, and nothing in this package reads, writes or
-  depends on the other one.
-- **0.1.0 is the first release of this repository; no earlier version was published.** This package
-  has no predecessor on npm, so there is no older artifact to compare against and no upgrade path
-  from one.
+- **本版本要求 DSH ≥ 0.2.2。** 0.2.0 patch 用 `agentPreset` 为 9 个子代理各选一个 preset，
+  而这个字段只有 0.2.2 的 `dsh-tool-subagent` 才会读取；0.2.2 同时移除了旧行使用的 `persona`
+  与 `toolFilter` 字段。在 DSH 0.2.1 及更早版本上，这些行**照常挂载**，但 `agentPreset` 只是被
+  接受、随后从不被读取（schema 会合并未知键而不是拒绝它），于是子代理**既没有 persona，也没有
+  任何工具限制**，直接继承父代理的全部工具集：像 explore 或 oracle 这样的只读子代理会静默获得
+  写文件与派生子代理的能力。这是**静默提权，不是挂载失败**。下面声明的 peer 范围仍然放行更旧的
+  0.2.x 构建，所以这是一条功能性要求，而不是 semver 约束。已于 `0.2.2-alpha.2` 验证；请不要在
+  低于 0.2.2 的 DSH 上运行本版本。
+- **声明的 peer 范围覆盖 0.1.7 线与 0.2 线。范围检查在两个 0.2.x 构建上验证过，但 `0.2.1-alpha.1` 只验证过 0.1.x 的 patch。** 24 个
+  `@deepseek-ai/dsh-*` peer 声明为
+  `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`，既保留本 fork 从上游继承的
+  范围，又加入 0.2 线。宿主用一个 semver 范围检查来判定这些 peer 是否兼容，并且会把预发布版本纳入比较，
+  因此该范围接受 `0.2.0`、`0.2.1-alpha.1` 与更晚的预发布版本 `0.2.2-beta`，而拒绝 `0.3.0-alpha.1`。
+  **已用实验在 `0.2.1-alpha.1`（仅 0.1.x 的 patch）与 `0.2.2-alpha.2`（本 patch）上验证**：在 profile 中不存在任何
+  豁免的情况下，对本包做 config dump 会以 0 退出、向 **stderr 写入 0 字节**，并在 dump 中带上该 preset 与
+  全部九条 persona 锚点；其中 `0.2.2-alpha.2` 这次运行针对的是把本包注册为 bundle 的 profile。这证明的是
+  挂载与锚点路径，而不是 persona 的字节内容，也不是 preset 的行为：本次验证没有调用任何 agent，
+  一个仍然存在但已被截断的 persona 同样会通过这项检查。
+  **`0.3.0-alpha.1` 是重新触发的条件**：将来的运行时一旦落在该范围内就会再次被拒，stderr 上出现同样的
+  不兼容警告，退出码同样是 0，所以除非去看 stderr，这个失败仍然是静默的。在这类版本上，你必须要么使用
+  落在声明范围内的 dsh，要么用
+  `dsh plugin allow-version "<pkg>@<version>" --dsh-version <version> --accept-risk` 授予精确版本
+  豁免。该豁免是宿主自带的逃生舱，并带有宿主自己警告过的风险，因此它是对风险的刻意接受，而不是受支持的
+  配置。**对于本次放宽没有覆盖的情形，它仍然是必需的**：npm 上已发布的 `0.1.0` 携带的是旧的、更窄的范围，
+  而将来任何 0.3.x 运行时也都需要它。`@deepseek-ai/cordis` 同样声明为 `^4.0.1`，但宿主从不检查它——
+  宿主只评估名为 `@deepseek-ai/dsh` 或以 `@deepseek-ai/dsh-` 开头的 peer——所以那一条并不是宿主会执行的
+  兼容性约束。
+- **`baseline/` 证明的是可复现，而不是正确。** baseline 是移植前 patch 的冻结快照，提交它是为了让往返
+  校验在任何地方都能跑。它与源 patch 逐字节一致，而这次推导证明移植是**可复现**的：已发布的 patch 与
+  baseline 之间恰好由三项已记录改写相连，别无其他。它**不**证明内容正确。如果源 patch 本身是错的，
+  这次推导会忠实复现那份错误，而这里所有检查依然会通过。
+- **内容正确性的既有证据不随包发布。** 那份证据是简体中文移植工作产出的 `omo-fork-chs-*` 证据集，其中
+  `verify-omo-fork-chs-bundle` 校验器报告 **`FAITHFUL`**，`verify-omo-fork-chs-deport` 校验器报告
+  **`CLEAN`**。这些校验器是**机器相关**的：它们针对只存在于移植准备机器上的目录运行，并且刻意不随本包
+  发布。
+- **内嵌的 persona 正文带有机器本地路径。** 三份 persona 文档中一共十行写出了本地化工作所在机器上的
+  绝对路径。它们违反了本仓库「任何提交的文件都不得写出机器绝对路径」的规则，之所以被容忍，只是因为与
+  源 bundle 的字节一致性是更硬的约束。受影响的那些行在 `tools/check-package.mjs` 中逐条列举，该扫描
+  只在这些确切位置接受匹配。`NOTICE.md` 把这件事记为修改条目 8。本文档不复制那些路径，因为它本身也
+  在该扫描的覆盖范围内。
+- **本仓库与英文 fork 并存。** `Tacrine/oh-my-dsh-omo-fork` 是一个独立仓库，有自己的包、自己的
+  preset id 和自己的范围映射。两个仓库互不影响：它们共享上游血缘，而本包中没有任何内容读取、写入或
+  依赖另一个。
+- **0.1.0 是本仓库的首次发布，此前没有任何版本发布过。** 本包在 npm 上没有前身，因此没有更早的产物可
+  供对照，也不存在从旧版本升级的路径。
 
-## Lineage
+## 源流
 
-This package descends from the Simplified-Chinese agent-preset bundle, which lived as a **link
-install**: a private dependency wired into one machine's DSH profile, pointing at a local directory.
-That form cannot be installed anywhere else, because its patch named a machine-local package and its
-persona anchors resolved relative to the profile directory.
+本包源自那份简体中文 agent-preset bundle，它当时以 **link 安装**的形态存在：一个接入某台机器 DSH
+profile 的私有依赖，指向一个本地目录。那种形态无法安装到别处，因为它的 patch 写出的是机器本地的包名，
+而它的 persona 锚点是相对于 profile 目录解析的。
 
-This repository turns that bundle into an **npm-installable** form. The three documented rewrites do
-the work: the package self-reference and the nine persona path anchors are re-pointed at this
-package's own name and its `package.json`, and the header comment follows. The result is a patch
-that resolves in any install layout, a frozen baseline that makes the round trip checkable without
-the original machine, and a check chain that proves the published patch still matches the source it
-was derived from.
+本仓库把那份 bundle 变成**可从 npm 安装**的形态。三项已记录改写完成了这件事：包自引用与九条 persona
+路径锚点被重新指向本包自己的名字及其 `package.json`，头部注释随之更新。结果是一个在任何安装布局下都能
+解析的 patch、一份让往返校验不再需要原机器的冻结 baseline，以及一条证明已发布 patch 仍等于其来源的
+检查链。
 
-The upstream project is **oh-my-openagent**, formerly published as **oh-my-opencode**
-(https://github.com/code-yeongyu/oh-my-openagent). The content in this repository is derived from
-upstream commit `3c711483856207ef530c09d062fa9077c225debbe`, which carries upstream version **5.0.1**.
-The persona prose, the toolchain composition and the plugin are the upstream design; this fork's
-contribution is the translation into Simplified Chinese and the packaging split.
+上游项目是 **oh-my-openagent**，曾以 **oh-my-opencode** 之名发布
+（https://github.com/code-yeongyu/oh-my-openagent）。本仓库中的内容派生自上游 commit
+`3c711483856207ef530c09d062fa9077c225debbe`，该 commit 对应上游版本 **5.0.1**。persona 正文、
+工具链组成与插件都沿用上游设计；本 fork 的贡献是简体中文翻译与打包拆分。

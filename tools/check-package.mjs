@@ -70,7 +70,7 @@ import { pathToFileURL } from 'node:url'
 /** The package identity this repository is expected to publish under. */
 const EXPECTED = {
   name: '@tacrine_f/oh-my-dsh-omo-fork-chs',
-  version: '0.2.0',
+  version: '0.2.1',
   license: 'SEE LICENSE IN NOTICE.md',
 }
 
@@ -99,7 +99,6 @@ const REQUIRED_FILES = [
   'test/',
   'tools/',
   'README.md',
-  'README.zh.md',
   'CHANGELOG.md',
   'LICENSE-MIT.md',
   'LICENSE-SUL-1.0.md',
@@ -119,7 +118,7 @@ const LICENSE_DOCUMENTS = ['LICENSE-MIT.md', 'LICENSE-SUL-1.0.md', 'NOTICE.md']
  * silently ignoring a document nobody thought to include. A document named in a
  * report cannot be quietly skipped.
  */
-const ANCHOR_DOCUMENTS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md']
+const ANCHOR_DOCUMENTS = ['README.md', 'CHANGELOG.md', 'NOTICE.md']
 
 /**
  * The `files[]` entries A19 treats as directories, spelled the way `REQUIRED_FILES`
@@ -294,7 +293,6 @@ const LOCAL_CLASSES = [
       path === 'index.js' ||
       path.startsWith('personas/') ||
       path === 'README.md' ||
-      path === 'README.zh.md' ||
       path === 'CHANGELOG.md' ||
       path === 'LICENSE-MIT.md' ||
       path === 'LICENSE-SUL-1.0.md',
@@ -881,16 +879,16 @@ function main() {
   // cover a real file inside them.
   const EXPECTED_SCOPE = {
     sul: ['personas/', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'baseline/cordis.patch.yml'],
-    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', '.gitignore', '.gitattributes', 'README.md', 'README.zh.md', 'CHANGELOG.md', 'NOTICE.md'],
+    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', '.gitignore', '.gitattributes', 'README.md', 'CHANGELOG.md', 'NOTICE.md'],
   }
   // The two anchor lists below carry a property the entry-set comparison above does
   // not: each path here is checked against both blocks, so a path that is covered by
   // the block it should not be in fails as well as one that is missing from the block
-  // it should be in. The lists are pinned to the same eleven mit entries as
+  // it should be in. The lists are pinned to the same ten mit entries as
   // `EXPECTED_SCOPE.mit`, so no path can be named in the scope block without also
   // being resolved against the block that claims it.
   const SUL_ANCHORS = ['baseline/cordis.patch.yml', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'personas/atlas.md']
-  const MIT_ANCHORS = ['README.md', 'README.zh.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', '.gitattributes', 'baseline/README.md', 'NOTICE.md']
+  const MIT_ANCHORS = ['README.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', '.gitattributes', 'baseline/README.md', 'NOTICE.md']
   const blockFor = (id) => scopeBlocks.find((block) => block.id === id)
   const blockCovers = (block, path) => block.entries.some((entry) => entryMatches(entry, path))
   for (const [id, expected] of Object.entries(EXPECTED_SCOPE)) {

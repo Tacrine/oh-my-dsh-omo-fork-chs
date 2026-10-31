@@ -103,7 +103,6 @@ package.json
 .gitignore
 .gitattributes
 README.md
-README.zh.md
 CHANGELOG.md
 NOTICE.md
 ```
