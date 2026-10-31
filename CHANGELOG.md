@@ -81,7 +81,7 @@ reports `verdict: "IDENTICAL"` again.
 ### Verification extended to dsh 0.2.2-alpha.2
 
 0.1.1 was verified on `0.2.1-alpha.1` — one 0.2.x build. This release was also
-verified on `0.2.2-alpha.2` (`C:\Users\Administrator\AppData\Roaming\DSH\data\versions\0.2.2-alpha.2\`):
+verified on `0.2.2-alpha.2` (the published DSH 0.2.2 alpha build):
 with no exemption in the profile, a `--dump-config` run exits 0, writes 0 bytes
 to stderr, and carries the preset with all 9 persona anchors and all 9
 sub-presets. That is still a claim about mount and anchor paths, not about
