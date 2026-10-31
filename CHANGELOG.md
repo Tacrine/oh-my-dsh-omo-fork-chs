@@ -30,6 +30,31 @@ copied modules, `A9`/`A12`/`A13`/`A15` for the licence documents and the patch).
 **Counts.** The tool now runs **22** structural and license assertions rather than 21, and the test
 suite totals **56** tests rather than 55.
 
+## [0.2.2] — 2026-10-31
+
+**What this release is for.** The Chinese `README.md` is rewritten for readability. The 0.2.1
+document was a close translation of the English one, and it kept that text's long nested clauses,
+its mid-sentence line breaks and its habit of carrying a whole enumeration inside one parenthetical.
+The facts, the ordering, the headings and every anchor are unchanged; what changed is the sentence
+structure and three stale numbers.
+
+**Documentation-only release.** No persona prose, orchestration doctrine, cordis patch, runtime
+module or license term changes.
+
+### Changed
+
+- **Sentences split and un-nested.** The 22-assertion enumeration in the verification section, the
+  peer-range discussion in Known issues, and the licence and lineage sections are now short
+  sentences with the same content. Nothing was added, and no claim was strengthened: "可能" stays
+  "可能", "计划" stays "计划".
+- **Three stale numbers corrected.** The patch is **946** lines, not 540, because the 0.2.0 migration
+  grew it from 540 to 946. The declaration is **10** preset blocks carrying **173** `- id:` entries,
+  not one 40-row declaration, for the same reason. The assertion count is no longer stated as a
+  number: the tool reports it per run, and the previously published figure of 22 did not match what
+  the tool reports here.
+- **English loanwords replaced where Chinese reads better.** `row` became 条目, `declaration` became
+  声明. Identifiers, field names and error strings are untouched.
+
 ## [0.2.1] — 2026-10-31
 
 **What this release is for.** The repository now ships **one** README, in Chinese. `README.md`
