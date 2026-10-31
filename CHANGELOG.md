@@ -38,7 +38,8 @@ suite totals **56** tests rather than 55.
 using `agentPreset`, which is the supported mechanism in cordis `^4.0.1`.
 The duplicate `list-agents` subpath was removed, and atlas gained a
 transport-failure reuse rule. The bundle is now verified on two 0.2.x builds
-rather than one.
+rather than one — `0.2.1-alpha.1` with the 0.1.x patch, `0.2.2-alpha.2` with
+this patch.
 
 **Requires DSH ≥ 0.2.2.** The 9 subagent rows now select their preset with
 `agentPreset`, a field that only the 0.2.2 `dsh-tool-subagent` reads; 0.2.2 also
@@ -51,10 +52,11 @@ subagent-spawning tools. That is a silent privilege escalation, not a mount
 failure. The declared peer range still admits older 0.2.x builds, so this is a
 functional requirement documented here rather than a semver constraint.
 
-Nothing in the preset's behaviour changes — the persona prose and the
-orchestration doctrine are unchanged — but the patch grows from 540 to 946
-lines because each sub-preset repeats its `!!js readFileSync(...)` expression
-from the old `persona:` field.
+No persona prose or orchestration doctrine changes. What changes is how each
+subagent's tool set is expressed: the `toolFilter` deny lists are replaced by
+per-preset plugin lists, and the patch grows from 540 to 946 lines because each
+sub-preset repeats its `!!js readFileSync(...)` expression from the old
+`persona:` field.
 
 ### Changed
 
@@ -92,11 +94,12 @@ reports `verdict: "IDENTICAL"` again.
 ### Verification extended to dsh 0.2.2-alpha.2
 
 0.1.1 was verified on `0.2.1-alpha.1` — one 0.2.x build. This release was also
-verified on `0.2.2-alpha.2` (the published DSH 0.2.2 alpha build):
-with no exemption in the profile, a `--dump-config` run exits 0, writes 0 bytes
-to stderr, and carries the preset with all 9 persona anchors and all 9
-sub-presets. That is still a claim about mount and anchor paths, not about
-persona bytes or preset behaviour.
+verified on `0.2.2-alpha.2` (the published DSH 0.2.2 alpha build) by a real
+`--dump-config` run against a profile that registers this package as a bundle:
+with no exemption present, the run exits 0, writes 0 bytes to stderr, and the
+dump carries the preset with all 9 persona anchors and all 9 sub-presets. That
+is still a claim about mount and anchor paths, not about persona bytes or preset
+behaviour — no agent was invoked.
 
 ## [0.1.1] — 2026-10-14
 

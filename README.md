@@ -324,9 +324,10 @@ Upstream names and trademarks belong to their owners.
   `0.2.1-alpha.1` and the later prerelease `0.2.2-beta`, and rejects `0.3.0-alpha.1`.
   **Verified by experiment on `0.2.1-alpha.1` (0.1.x patch only) and `0.2.2-alpha.2` (this patch)**: with
   no exemption present in the profile, a config dump of this package exits 0, writes **0 bytes to
-  stderr**, and carries the preset with all nine persona anchors. That is a claim about the mount and
-  the anchor paths, not about the personas' bytes and not about the preset's behaviour: no agent was
-  invoked, and a persona that still existed but had been truncated would pass the same check.
+  stderr**, and carries the preset with all nine persona anchors; the `0.2.2-alpha.2` run was against
+  a profile that registers this package as a bundle. That is a claim about the mount and the anchor
+  paths, not about the personas' bytes and not about the preset's behaviour: no agent was invoked,
+  and a persona that still existed but had been truncated would pass the same check.
   **`0.3.0-alpha.1` is the re-entry condition**: a future runtime in that range is rejected again,
   with the same incompatibility warning on stderr and the same exit 0, so the failure stays silent
   unless you read stderr. On such a version you must either run a dsh inside the declared range, or
