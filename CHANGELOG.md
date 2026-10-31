@@ -30,6 +30,31 @@ copied modules, `A9`/`A12`/`A13`/`A15` for the licence documents and the patch).
 **Counts.** The tool now runs **22** structural and license assertions rather than 21, and the test
 suite totals **56** tests rather than 55.
 
+## [0.2.1] — 2026-10-31
+
+**What this release is for.** The repository now ships **one** README, in Chinese. `README.md`
+carries the Simplified Chinese text that used to live in `README.zh.md`, so the GitHub landing page
+and the npm package page both open in Chinese — which is what a `-chs` fork should do. The English
+document is **not** retained as a second file: it is gone, and `README.zh.md` is deleted rather than
+left as a pointer, because two files carrying the same content drift apart by construction.
+
+This is a **documentation-only** release. No persona prose, no orchestration doctrine, no cordis
+patch, no runtime module and no license term changes. The MIT scope list in `LICENSE-MIT.md`, the
+scope map in `NOTICE.md`, the `files[]` array, and the four scope lists inside
+`tools/check-package.mjs` all lose exactly one entry — `README.zh.md` — because that path no longer
+exists; every other byte of those documents is unchanged.
+
+### Changed
+
+- **`README.md` is now the Chinese document.** Its content is the former `README.zh.md`, unchanged
+  except for removing `README.zh.md` from the MIT scope list it quotes.
+- **`README.zh.md` is removed.** The nine places that named it were updated in the same commit:
+  `README.md`, `package.json` (`files[]`), `LICENSE-MIT.md`, `NOTICE.md`, and five lists in
+  `tools/check-package.mjs` (`REQUIRED_FILES`, `ANCHOR_DOCUMENTS`, the machine-local package-name
+  predicate chain, `EXPECTED_SCOPE.mit`, `MIT_ANCHORS`). The three mentions in older `CHANGELOG.md` entries are left
+  verbatim: they record what was true when those releases shipped, and editing them would falsify
+  the history rather than fix anything.
+
 ## [0.2.0] — 2026-10-30
 
 **What this release is for.** The 9 subagent rows are migrated from the old
