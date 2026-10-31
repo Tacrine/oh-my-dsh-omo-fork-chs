@@ -40,6 +40,13 @@ The duplicate `list-agents` subpath was removed, and atlas gained a
 transport-failure reuse rule. The bundle is now verified on two 0.2.x builds
 rather than one.
 
+**Requires DSH ≥ 0.2.2.** The 9 subagent rows now select their preset with
+`agentPreset`, a field only the 0.2.2 `dsh-tool-subagent` accepts: 0.2.2 removed
+the `persona` and `toolFilter` fields the old rows used, so on DSH 0.2.1 and
+earlier the 9 subagents cannot mount. The declared peer range still admits older
+0.2.x builds, so this is a functional requirement documented here rather than a
+semver constraint.
+
 Nothing in the preset's behaviour changes — the persona prose and the
 orchestration doctrine are unchanged — but the patch grows from 540 to 946
 lines because each sub-preset repeats its `!!js readFileSync(...)` expression

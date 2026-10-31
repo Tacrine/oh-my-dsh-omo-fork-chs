@@ -304,6 +304,13 @@ Upstream names and trademarks belong to their owners.
 
 ## Known issues
 
+- **This version requires DSH ≥ 0.2.2.** The 0.2.0 patch selects each of the 9
+  subagent presets with `agentPreset`, a field that only the 0.2.2
+  `dsh-tool-subagent` accepts: 0.2.2 removed the `persona` and `toolFilter`
+  fields the old rows used, so on DSH 0.2.1 and earlier the 9 subagents cannot
+  mount. The declared peer range below still admits older 0.2.x builds, so this
+  is a functional requirement rather than a semver constraint. Verified on
+  `0.2.2-alpha.2`; do not run this version on DSH older than 0.2.2.
 - **The declared peer range covers the 0.1.7 line and the 0.2 line, and was verified on two 0.2.x builds.** The 24
   `@deepseek-ai/dsh-*` peers are declared as
   `>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`, which keeps the range this
