@@ -309,6 +309,18 @@ bundle patch 表达式的**逐字片段**，以便生成和校验该 patch。那
 
 ## 已知问题
 
+- **`0.1.0` 至 `0.2.2` 全部带有同一个提示变量 bug，而且现在**仍可正常安装**（尚未 deprecate，
+  因为发布端本机凭据没有写权）。这些版本的 `cordis.patch.yml` 在 persona 的 `suffix:` 里写了
+  `{{cwd}}`，而运行时只注册 `provider` 与 `model`，所以会话在组装提示词时直接失败：
+  `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`。装包本身会成功，
+  config dump 也会以 0 退出、stderr 0 字节，因为 dump 不插值——故障只在开新会话时出现。
+  `0.2.3` 已修复：suffix 改回纯文本，并加了一条静态守卫。
+
+  **已经装了旧版本、会话报这个错时怎么退回**：把本 bundle 从那个 profile 里移除，等修复版本——
+  先 `dsh plugin --profile <name> remove @tacrine_f/oh-my-dsh-omo-fork-chs`，再把包名从该 profile
+  的 `package.json` 中 `dsh.profile.bundles` 数组里删掉，然后重启 Host 并新开一个会话。更省事的
+  做法是直接升级到 `0.2.3`，它就是为这件事发布的。`0.0.0-stage` 没有对应 tag，无法以 tag 树判定
+  是否受影响，因此不在上述列表里，也不建议安装。
 - **本版本要求 DSH ≥ 0.2.2。** 0.2.0 patch 用 `agentPreset` 为 9 个子代理各选一个 preset，
   而这个字段只有 0.2.2 的 `dsh-tool-subagent` 才读取；0.2.2 同时移除了旧行使用的 `persona` 与
   `toolFilter` 字段。在 DSH 0.2.1 及更早版本上，这些行**照常挂载**，但 `agentPreset` 只是被接受、

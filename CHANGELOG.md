@@ -52,7 +52,9 @@ and shipped two tests that make this class of bug visible before it can reach a 
   `DSH_HOME` from a `file`, `github` or `npm` source and asserts against the **installed** artifact
   rather than the working copy.
 
-Verified on DSH `0.2.2-alpha.2` installed from the GitHub tag `v0.2.3` and from npm `0.2.3`.
+Verified on DSH `0.2.2-alpha.2` by materialising the `v0.2.3` tag tree and the published `0.2.3`
+tarball into an isolated profile and composing the config there, while the package-manager install
+path (`dsh plugin … --profile … add -w github:…#v0.2.3` and `npm@0.2.3`) has not been exercised.
 
 ## [0.2.2] — 2026-10-31
 
