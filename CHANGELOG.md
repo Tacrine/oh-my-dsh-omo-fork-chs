@@ -372,7 +372,8 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   repositories with separate packages, preset ids and scope mappings, and neither affects the other.
 - A missing or empty persona file fails the mount by design, naming the file in the error.
 
-[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.2.2...HEAD
+[0.2.3]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.3
 [0.2.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.0
