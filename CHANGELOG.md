@@ -30,6 +30,28 @@ copied modules, `A9`/`A12`/`A13`/`A15` for the licence documents and the patch).
 **Counts.** The tool now runs **22** structural and license assertions rather than 21, and the test
 suite totals **56** tests rather than 55.
 
+## [0.2.3] — 2026-10-31
+
+**What this release is for.** 0.2.2 wrote an unregistered prompt variable into the persona suffix,
+and shipped two tests that make this class of bug visible before it can reach a session.
+
+### Fixed
+
+- **`{{cwd}}` in the persona suffix.** `dsh` registers exactly two prompt variables for a persona
+  section — `provider` and `model` — and `{{cwd}}` was not one of them, so prompt assembly threw
+  `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"` and a session could
+  not start. The suffix is plain prose again — `Your working directory is the session workspace.` —
+  matching the upstream bundle verbatim. `baseline/cordis.patch.yml` was re-derived with
+  `node tools/derive-baseline.mjs` rather than hand-edited, so the round trip still holds.
+
+### Added
+
+- **`test/prompt-variable-guard.test.mjs`** — a static guard over `cordis.patch.yml` and
+  `baseline/cordis.patch.yml`: every `{{name}}` in either text must be one the runtime registers.
+- **`test/real-install-verify.test.mjs`** — installs the package into a throwaway, isolated
+  `DSH_HOME` from a `file`, `github` or `npm` source and asserts against the **installed** artifact
+  rather than the working copy.
+
 ## [0.2.2] — 2026-10-31
 
 **What this release is for.** The Chinese `README.md` is rewritten for readability. The 0.2.1

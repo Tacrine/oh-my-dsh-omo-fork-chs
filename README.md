@@ -224,6 +224,58 @@ npm run port -- --src <dir holding cordis.patch.yml>
 > 因此在仓库之外解包已发布 tarball 的使用者会看到这个错误，这是刻意的：一条对从未做过的工作报告
 > 成功的映射检查，比没有检查更糟。已发布的包包含这些工具与测试套件，所以这条链可以从克隆里重跑。
 
+## 真机安装验证（自动化）
+
+`test/real-install-verify.test.mjs` 把本包真的装进一个一次性的隔离 `DSH_HOME`，再对**装出来的产物**
+做断言，而不是对仓库里的副本：断言对象是那个被安装、被 compose 的 `cordis.patch.yml`。
+
+```powershell
+$env:DSH_BIN = "<你已安装的 DSH 版本目录>\node_modules\@deepseek-ai\dsh\lib\bin.js"
+npm run test
+```
+
+- **`DSH_BIN`** 指向某个 DSH 版本的 `node_modules/@deepseek-ai/dsh/lib/bin.js`。没有它就**没有** DSH
+  可以用来安装，所以该用例整组 `skip`，理由是 `DSH_BIN not set`。这是唯一诚实的跳过：装上了却断言
+  不出来算失败，不会被降级成 skip。
+- **`OMO_VERIFY_SOURCES`** 是逗号分隔的源列表，**默认值是 `file`**。合法 token 只有五种形态：
+  - `file`（或 `file:`）——从当前工作树安装，不依赖任何发布状态，所以它是默认值；
+  - `github`——裸族名，ref 依次取 `OMO_VERIFY_REF`、`OMO_VERIFY_SHA`、`git rev-parse HEAD`；
+  - `github#<ref>`——显式 ref，直接用；
+  - `npm`——裸族名，版本取 `OMO_VERIFY_VERSION`，未设置时取 `package.json` 声明的版本；
+  - `npm@<version>`——显式版本。
+  任何其它 token（包括拼错的）都会**硬失败**，不会被吞成「0 个用例、退出 0」的假通过。
+
+每个源各跑一遍：建临时 `DSH_HOME` → `dsh plugin --profile verify add -w <源>` → 把包名写进该 profile 的
+`dsh.profile.bundles` → `--dump-config` 自检 → 对安装产物跑断言（提示变量守卫、`{{cwd}}` 计数为 0、
+suffix 行文本）。`github` 与 `npm` 两族只有在对应 ref 或版本真的可达时才能通过：发布之前用 commit
+sha，发布之后用版本号。
+
+## `--dump-config` 不插值
+
+`--dump-config` 只**合成配置树**，不做提示词插值，所以一个把未注册变量写进 persona 段的 preset 同样
+能让它以 0 退出、stderr 0 字节。换言之：**它通过不代表提示变量合法**。
+
+提示变量是否合法由静态守卫 `test/prompt-variable-guard.test.mjs` 判定：它扫描 `cordis.patch.yml` 与
+`baseline/cordis.patch.yml` 里出现的每个 `{{名字}}`，要求全部落在运行时注册的 `provider` / `model`
+之内。两条检查互补，谁也替代不了谁。
+
+## 手工建一个隔离环境（手工步骤，非自动化）
+
+以下**是手工步骤**。自动化测试复刻的只是其中的「会话隔离」语义，不是这个界面流程本身：
+
+1. 在启动器里新增一个启动项；
+2. 版本选你已安装的那个 DSH 版本；
+3. 隔离方式选「会话隔离」，得到一个独立的 `DSH_HOME`；
+4. 可选「从已有 Profile 复制」，从一个现成 profile 起步；
+5. 起一个会话，在该 profile 里装包：`dsh plugin --profile <name> add -w <源>`；
+6. 把包名加进该 profile 的 `dsh.profile.bundles`；
+7. `dsh --profile <name> --dump-config` 自检；
+8. 开一个新会话，选中本 preset。
+
+自动化复刻的是第 2 步与第 3 步的组合——一个独立的 `DSH_HOME` 加指定版本的 DSH runtime——然后直接
+调用 CLI。它**不驱动 GUI**：启动器自身的界面行为、启动项持久化、以及第 4 步的复制路径都没有被自动化
+覆盖。
+
 ## 许可
 
 本仓库**双许可**，两个许可不是二选一：每个文件恰好被其中一个覆盖。它**不是**仅 MIT。
@@ -275,7 +327,9 @@ bundle patch 表达式的**逐字片段**，以便生成和校验该 patch。那
   profile 中没有任何豁免的情况下，对本包做 config dump 会以 0 退出、向 **stderr 写入 0 字节**，dump
   中带上该 preset 与全部九条 persona 锚点；其中 `0.2.2-alpha.2` 这次运行针对的是把本包注册为 bundle
   的 profile。这证明的是挂载与锚点路径，不是 persona 的字节内容，也不是 preset 的行为：本次验证没有
-  调用任何 agent，一个仍然存在但已被截断的 persona 同样会通过。
+  调用任何 agent，一个仍然存在但已被截断的 persona 同样会通过。另外 `--dump-config` 只合成配置树、
+  不做提示词插值，所以**它通过也不代表提示变量合法**——那一层由静态守卫
+  `test/prompt-variable-guard.test.mjs` 负责。
 
   **`0.3.0-alpha.1` 是重新触发的条件。** 将来的运行时一旦落在该范围内就会再次被拒，stderr 上出现
   同样的不兼容警告，退出码同样是 0，所以不看 stderr 就仍是静默失败。在这类版本上，你要么使用落在
