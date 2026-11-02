@@ -126,6 +126,20 @@ const DSH_BIN = process.env.DSH_BIN ?? ''
 const countOf = (text, needle) => text.split(needle).length - 1
 
 /**
+ * Every occurrence of a literal, **refusing a prefix match**.
+ *
+ * A plain substring count is wrong for the composed tree: `agentPreset: omo-sisyphus`
+ * is a prefix of `agentPreset: omo-sisyphus-junior`, so the shorter name counted two
+ * rows and asserted 2 against an expected 1. That was measured on a real
+ * `0.2.2-alpha.2` dump of this bundle, not inferred, and it would have turned every
+ * `github`/`npm` run red for a reason that has nothing to do with the install. The
+ * lookahead rejects any name character or hyphen continuing the value.
+ */
+const countLiteralToken = (text, literal) => text.match(new RegExp(`${literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`, 'g'))?.length ?? 0
+
+export { countLiteralToken }
+
+/**
  * The prompt variable names `text` uses that `allowed` does not register, in
  * first-seen order. A name already reported is not repeated, so the result is a
  * set-shaped list and an assertion can compare it with `deepEqual`.
@@ -339,7 +353,7 @@ async function verifySource(t, source) {
     const beforeRegistration = dumpConfig(home, stderrPath)
     assert.equal(beforeRegistration.stderrBytes, 0, `${source.label}: the pre-registration dump wrote to stderr`)
     assert.equal(
-      countOf(beforeRegistration.stdout, `id: ${PRESET_ID}`),
+      countLiteralToken(beforeRegistration.stdout, `id: ${PRESET_ID}`),
       0,
       `${source.label}: an unregistered bundle already contributes "id: ${PRESET_ID}", so the positive ` +
         'dump assertion would pass without the bundle being registered',
@@ -349,20 +363,20 @@ async function verifySource(t, source) {
     const afterRegistration = dumpConfig(home, stderrPath)
     assert.equal(afterRegistration.stderrBytes, 0, `${source.label}: the dump must be silent on stderr`)
     assert.equal(
-      countOf(afterRegistration.stdout, `id: ${PRESET_ID}`),
+      countLiteralToken(afterRegistration.stdout, `id: ${PRESET_ID}`),
       1,
       `${source.label}: the composed tree must name the preset exactly once as "id: ${PRESET_ID}"`,
     )
     assert.equal(
-      countOf(afterRegistration.stdout, `order: ${PRESET_ORDER}`),
+      countLiteralToken(afterRegistration.stdout, `order: ${PRESET_ORDER}`),
       1,
       `${source.label}: the preset must keep order ${PRESET_ORDER}`,
     )
     for (const preset of SUBAGENT_PRESETS) {
       assert.equal(
-        countOf(afterRegistration.stdout, `agentPreset: ${preset}`),
+        countLiteralToken(afterRegistration.stdout, `agentPreset: ${preset}`),
         1,
-        `${source.label}: the composed tree must route one row to ${preset}`,
+        `${source.label}: the composed tree must route exactly one row to ${preset}`,
       )
     }
     // A substring count, not a read proof: it shows each persona is named in the
