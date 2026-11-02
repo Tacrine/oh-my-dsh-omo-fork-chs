@@ -41,14 +41,14 @@
           # ── identity ────────────────────────────────────────────────────────────────
 
           # The preset's own persona, shadowing the deployment default for this agent.
-          # `{{model}}` and `{{cwd}}` resolve from the agent's own route and workspace.
+          # Only `{{provider}}` and `{{model}}` are registered prompt variables; the working directory is not one.
           # Plan-aware identity: Atlas normally, Prometheus while /plan is active.
           # This row REPLACES the legacy persona plugin registration so that exactly one
           # `deployment:` persona-prefix registration exists in this agent scope.
           - id: persona
             name: '@tacrine_f/oh-my-dsh-omo-fork-chs/persona'
             config:
-              suffix: Your working directory is {{cwd}}.
+              suffix: Your working directory is the session workspace.
 
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
