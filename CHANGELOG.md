@@ -52,6 +52,8 @@ and shipped two tests that make this class of bug visible before it can reach a 
   `DSH_HOME` from a `file`, `github` or `npm` source and asserts against the **installed** artifact
   rather than the working copy.
 
+Verified on DSH `0.2.2-alpha.2` installed from the GitHub tag `v0.2.3` and from npm `0.2.3`.
+
 ## [0.2.2] — 2026-10-31
 
 **What this release is for.** The Chinese `README.md` is rewritten for readability. The 0.2.1
