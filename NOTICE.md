@@ -100,6 +100,8 @@ test/
 .github/
 baseline/README.md
 package.json
+caveman-autoload.mjs
+skills/
 .gitignore
 .gitattributes
 README.md

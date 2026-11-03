@@ -93,7 +93,9 @@ const PERSONA_TABLE = [
 const REQUIRED_FILES = [
   'plan-aware-persona.mjs',
   'index.js',
+  'caveman-autoload.mjs',
   'personas/',
+  'skills/',
   'cordis.patch.yml',
   'baseline/',
   'test/',
@@ -134,7 +136,7 @@ const ANCHOR_DOCUMENTS = ['README.md', 'CHANGELOG.md', 'NOTICE.md']
  * beside the other tables so that adding a directory to `files[]` forces a deliberate
  * decision here rather than silently widening the set A19 covers.
  */
-const DIRECTORY_ENTRIES = ['personas/', 'baseline/', 'test/', 'tools/']
+const DIRECTORY_ENTRIES = ['personas/', 'skills/', 'baseline/', 'test/', 'tools/']
 
 /**
  * Paths that must never reach the tarball, checked against the filesystem rather
@@ -879,7 +881,7 @@ function main() {
   // cover a real file inside them.
   const EXPECTED_SCOPE = {
     sul: ['personas/', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'baseline/cordis.patch.yml'],
-    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', '.gitignore', '.gitattributes', 'README.md', 'CHANGELOG.md', 'NOTICE.md'],
+    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', 'caveman-autoload.mjs', 'skills/', '.gitignore', '.gitattributes', 'README.md', 'CHANGELOG.md', 'NOTICE.md'],
   }
   // The two anchor lists below carry a property the entry-set comparison above does
   // not: each path here is checked against both blocks, so a path that is covered by
@@ -1003,6 +1005,7 @@ function main() {
   const GATED_MODULES = [
     ['index.js', 'A32DF6CA6466FF522C972932A84A5D1AA43E212B0CD2B1E0E29DD4ACF4908F44'],
     ['plan-aware-persona.mjs', '52F4E3A60DFB09B5F52D284239AD533A6E7693CEBA3EA97F5F8AB9A75B444AB3'],
+    ['caveman-autoload.mjs', '4206EE3E432E31FD75AD54F17E4459918CAA84272B832B79B50AED3AE4810C81'],
   ]
   const gatedHashes = []
   for (const [moduleName, expectedHash] of GATED_MODULES) {

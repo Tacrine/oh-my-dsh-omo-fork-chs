@@ -8,13 +8,16 @@
   "exports": {
     ".": "./index.js",
     "./persona": "./plan-aware-persona.mjs",
+    "./caveman": "./caveman-autoload.mjs",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "plan-aware-persona.mjs",
     "index.js",
+    "caveman-autoload.mjs",
     "personas/",
+    "skills/",
     "cordis.patch.yml",
     "README.md",
     "CHANGELOG.md",
