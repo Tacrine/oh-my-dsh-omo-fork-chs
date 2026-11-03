@@ -113,6 +113,31 @@ const PERSONA_FILES = [
 /** The only prompt variables the agent loop registers. */
 const ALLOWED_PROMPT_VARIABLES = new Set(['provider', 'model'])
 
+/**
+ * The host-plane plugin row and the skill it ships.
+ *
+ * `id: caveman-autoload` is the only thing about the caveman loader a dump can
+ * answer. `--dump-config` composes the tree without booting and without
+ * evaluating `!!js`, so it never contains the section text or the module's
+ * strings: a dump can show the ROW, never the word `ultra`. Anything about the
+ * default level is asserted on the installed bytes below.
+ */
+const CAVEMAN_PLUGIN_ID = 'caveman-autoload'
+const CAVEMAN_SKILL_NAME = 'caveman-ultra'
+const CAVEMAN_SKILL_SEGMENTS = ['skills', 'caveman-ultra', 'SKILL.md']
+
+/**
+ * A slash-command mention, built from parts so that this file does not itself
+ * carry the literal it forbids.
+ *
+ * The boundaries matter in both directions: without the lookbehind a path that
+ * merely ends in the bare word (a directory segment followed by the name) would
+ * match, and without the lookahead the packaged skill name `caveman-ultra` would.
+ * The repository's release rule is that no packaged artifact names the old slash
+ * command, and a bare substring search reports false positives on both shapes.
+ */
+const SLASH_COMMAND = new RegExp('(?<![\\w-\\/])' + '\\/' + 'caveman(?![\\w-])', 'g')
+
 /** The token shape a prompt variable reference takes, tolerant of inner spaces. */
 const PROMPT_VARIABLE = /\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g
 
@@ -315,6 +340,14 @@ const profileDirOf = (home) => join(home, 'profiles', PROFILE)
 const installedPatchOf = (home) => join(profileDirOf(home), 'node_modules', PACKAGE_NAME, 'cordis.patch.yml')
 
 /**
+ * The installed skill body, i.e. the file the host-plane row's plugin registers.
+ *
+ * Asserted as bytes on disk rather than through the dump, because the dump can
+ * name the row but cannot show what the registration says (see `CAVEMAN_PLUGIN_ID`).
+ */
+const installedSkillOf = (home) => join(profileDirOf(home), 'node_modules', PACKAGE_NAME, ...CAVEMAN_SKILL_SEGMENTS)
+
+/**
  * Register the installed package as a profile bundle.
  *
  * `dsh plugin add` installs the package but does **not** add it to
@@ -358,10 +391,25 @@ async function verifySource(t, source) {
       `${source.label}: an unregistered bundle already contributes "id: ${PRESET_ID}", so the positive ` +
         'dump assertion would pass without the bundle being registered',
     )
+    assert.equal(
+      countLiteralToken(beforeRegistration.stdout, `id: ${CAVEMAN_PLUGIN_ID}`),
+      0,
+      `${source.label}: an unregistered bundle already contributes "id: ${CAVEMAN_PLUGIN_ID}", so the ` +
+        'positive host-plane assertion below would pass without the bundle being registered',
+    )
 
     registerBundle(home, source.label)
     const afterRegistration = dumpConfig(home, stderrPath)
     assert.equal(afterRegistration.stderrBytes, 0, `${source.label}: the dump must be silent on stderr`)
+    // Host-plane row: the caveman loader is mounted at the bundle root, so it must
+    // appear in the composed tree as a row of its own, once. Nothing about `ultra`
+    // is asserted here — the dump carries no section text and never interpolates.
+    assert.equal(
+      countLiteralToken(afterRegistration.stdout, `id: ${CAVEMAN_PLUGIN_ID}`),
+      1,
+      `${source.label}: the composed tree must carry the host-plane row "id: ${CAVEMAN_PLUGIN_ID}" exactly ` +
+        'once; the plugin row is what mounts the loader for every session',
+    )
     assert.equal(
       countLiteralToken(afterRegistration.stdout, `id: ${PRESET_ID}`),
       1,
@@ -398,6 +446,34 @@ async function verifySource(t, source) {
         `${existsSync(join(profileDirOf(home), 'node_modules')) ? readdirSync(join(profileDirOf(home), 'node_modules')).join(', ') : 'directory absent'}`,
     )
     assertInstalledPatch(readFileSync(installedPatch, 'utf8'), `${source.label}: ${installedPatch}`)
+
+    // The skill the host-plane row registers, asserted on the installed bytes.
+    const installedSkill = installedSkillOf(home)
+    assert.ok(
+      existsSync(installedSkill),
+      `${source.label}: the package does not ship ${CAVEMAN_SKILL_SEGMENTS.join('/')} (expected at ` +
+        `${installedSkill}). That is a packaging difference, not a file to skip: contents of ` +
+        `${join(profileDirOf(home), 'node_modules', PACKAGE_NAME)}: ` +
+        `${existsSync(join(profileDirOf(home), 'node_modules', PACKAGE_NAME)) ? readdirSync(join(profileDirOf(home), 'node_modules', PACKAGE_NAME)).join(', ') : 'directory absent'}`,
+    )
+    const skillText = readFileSync(installedSkill, 'utf8')
+    assert.ok(
+      skillText.includes(`name: ${CAVEMAN_SKILL_NAME}`),
+      `${source.label}: the shipped skill must declare "name: ${CAVEMAN_SKILL_NAME}" in its frontmatter, so ` +
+        'that the registered name and the file agree',
+    )
+    assert.ok(
+      skillText.includes('Default: **ultra**'),
+      `${source.label}: the shipped skill must declare "Default: **ultra**"; this is the whole point of ` +
+        'shipping it, and no dump can show it',
+    )
+    const slashCommandCount = (skillText.match(SLASH_COMMAND) ?? []).length
+    assert.equal(
+      slashCommandCount,
+      0,
+      `${source.label}: the shipped skill names the old slash command ${slashCommandCount} time(s); this ` +
+        'deployment has no such command, so a body that quotes it instructs the model to run nothing',
+    )
   } finally {
     rmSync(home, { recursive: true, force: true })
   }
