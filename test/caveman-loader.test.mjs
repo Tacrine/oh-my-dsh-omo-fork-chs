@@ -75,20 +75,30 @@ function frontmatterName(content) {
  * @returns the fake context plus the record it fills in.
  */
 function makeContext() {
-  const recorded = { skills: [], sections: [], effects: [] }
+  const recorded = { skills: [], sections: [], effects: [], effectDepth: 0 }
   const ctx = {
     effect(fn, label) {
       recorded.effects.push(label)
-      return fn()
+      recorded.effectDepth += 1
+      try {
+        return fn()
+      } finally {
+        recorded.effectDepth -= 1
+      }
     },
     skills: {
       register(skill) {
+        // A registration outside `ctx.effect` is not tied to the plugin's lifetime, so Cordis
+        // would never dispose it. The fake refuses it the same way a real scope would: this is
+        // what makes "the module registers through effects" an assertion rather than a claim.
+        if (recorded.effectDepth === 0) throw new Error('skills.register called outside ctx.effect')
         recorded.skills.push(skill)
         return () => {}
       },
     },
     systemPrompt: {
       section(section) {
+        if (recorded.effectDepth === 0) throw new Error('systemPrompt.section called outside ctx.effect')
         recorded.sections.push(section)
         return () => {}
       },
@@ -110,6 +120,25 @@ test('the module declares the plugin name and the two services it needs', () => 
   assert.equal(typeof apply, 'function')
   assert.equal(moduleName, 'caveman-autoload')
   assert.deepEqual(inject, ['systemPrompt', 'skills'])
+})
+
+test('both registrations are made inside ctx.effect, so they are tied to the plugin lifetime', () => {
+  const { ctx, recorded } = makeContext()
+
+  apply(ctx)
+
+  assert.deepEqual(
+    recorded.effects,
+    ['caveman-autoload: skill', 'caveman-autoload: loader section'],
+    'exactly two effects, one per registration, in this order',
+  )
+  assert.equal(recorded.skills.length, 1, 'the one skill registration went through an effect')
+  assert.equal(recorded.sections.length, 1, 'the one section registration went through an effect')
+
+  // The fake refuses a registration made outside an effect, so the assertion above is not
+  // satisfied by an implementation that calls the services directly.
+  assert.throws(() => ctx.skills.register({ name: 'probe', description: 'd', content: 'c' }), /outside ctx\.effect/)
+  assert.throws(() => ctx.systemPrompt.section({ name: 'probe', order: 1, text: 't' }), /outside ctx\.effect/)
 })
 
 test('apply registers one skill whose description is the skill file’s own', () => {

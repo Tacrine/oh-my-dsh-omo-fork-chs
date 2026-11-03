@@ -75,7 +75,11 @@ jobs:
         shell: bash
         run: |
           node tools/verify-patch.mjs --legacy baseline/cordis.patch.yml --runtime "${{ github.workspace }}/.dsh-verify/node_modules" > .dsh-verify/verify.json
-          node -e "const r = require('./.dsh-verify/verify.json'); if (r.verdict !== 'IDENTICAL') { console.error('verdict is ' + r.verdict); process.exit(1) } if (r.yamlCompare !== 'ok') { console.error('yamlCompare is ' + r.yamlCompare); process.exit(1) } if (r.sites.length !== 12) { console.error('sites is ' + r.sites.length); process.exit(1) } console.log('verdict IDENTICAL, yamlCompare ok, sites ' + r.sites.length)"
+          # The site count is not asserted here: `verify-patch` already exits non-zero when the
+          # number of touched sites is not `EXPECTED_SITES`, and a second copy of that constant in
+          # this file is what let the workflow reject a result the tool had just accepted. The
+          # verdict and the structured comparison are the two things only this step can add.
+          node -e "const r = require('./.dsh-verify/verify.json'); if (r.verdict !== 'IDENTICAL') { console.error('verdict is ' + r.verdict); process.exit(1) } if (r.yamlCompare !== 'ok') { console.error('yamlCompare is ' + r.yamlCompare + ': the structured comparison was skipped rather than passed'); process.exit(1) } console.log('verdict IDENTICAL, yamlCompare ok, sites ' + r.sites.length)"
 
       # Three things are asserted, and the middle one is the one a name list cannot
       # fake: the entries that must be present, the structural invariant that the

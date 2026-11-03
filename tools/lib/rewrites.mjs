@@ -128,9 +128,18 @@ const lineOf = (text, offset) => text.slice(0, offset).split('\n').length
 /**
  * Apply the three rewrites to a patch text and report every site touched.
  *
- * Each site carries the 1-based line number in the *source* text, the line before
- * the rewrite and the line after it, so a reviewer can see exactly what changed
- * without diffing two 540-line documents by eye.
+ * Each site carries the 1-based line number the match sits on, the line before the rewrite and the
+ * line after it, so a reviewer can see exactly what changed without diffing two 950-line documents
+ * by eye.
+ *
+ * The three passes are cumulative — the persona pass searches the output of the name pass, and the
+ * comment pass searches the output of both — and the persona rewrite makes each anchor about 100
+ * characters longer, so the document grows by roughly 900 characters before the comment pass runs.
+ * An offset taken from that pass is therefore **not** an index into the original text: read against
+ * the original, the last comment site fell past the end, and the report claimed line 951 in a
+ * 950-line document with empty before/after text. Line numbers are computed against the same string
+ * the offset came from. The rules never add or remove a line break, so the number still means the
+ * line the site occupies in the source.
  *
  * @param text - the source patch text.
  * @param packageName - the published package name.
@@ -139,31 +148,57 @@ const lineOf = (text, offset) => text.slice(0, offset).split('\n').length
 export function applyRewrites(text, packageName) {
   const sites = []
   const counts = { name: 0, persona: 0, comment: 0 }
-  const sourceLines = text.split('\n')
-  const lineText = (offset) => sourceLines[lineOf(text, offset) - 1]
 
-  let out = text.replace(SELF_REFERENCE, (match, offset) => {
+  /**
+   * Record one touched site.
+   *
+   * @param shape - the rule name and, for a persona anchor, the file it belongs to.
+   * @param current - the text the match was found in, which is the string `offset` indexes.
+   * @param offset - the match's character offset in `current`.
+   * @param match - the matched text, replaced in the line to produce `after`.
+   * @param replacement - what the rule substitutes for `match`.
+   */
+  const recordSite = (shape, current, offset, match, replacement) => {
+    const line = lineOf(current, offset)
+    const before = current.split('\n')[line - 1]
+    const site = {
+      rule: shape.rule,
+      line,
+      ...(shape.file === undefined ? {} : { file: shape.file }),
+      before,
+      after: before.replace(match, replacement),
+    }
+    sites.push(site)
+  }
+
+  // Each pass names its own input rather than reading `out` inside the callback: the first pass
+  // would otherwise read `out` while `out`'s own initialiser is still running, which is a reference
+  // before initialisation rather than a value.
+  const named = text
+  const out = named.replace(SELF_REFERENCE, (match, offset) => {
     counts.name += 1
     const after = `name: '${packageName}/persona'`
-    sites.push({ rule: 'self-reference', line: lineOf(text, offset), before: lineText(offset), after: lineText(offset).replace(match, after) })
+    recordSite({ rule: 'self-reference' }, named, offset, match, after)
     return after
   })
 
-  out = out.replace(PERSONA_ANCHOR, (match, file, offset) => {
+  const personaInput = out
+  const afterPersona = personaInput.replace(PERSONA_ANCHOR, (match, file, offset) => {
     counts.persona += 1
     const after = personaExpression(packageName, file)
-    sites.push({ rule: 'persona-anchor', line: lineOf(text, offset), file, before: lineText(offset), after: lineText(offset).replace(match, after) })
+    recordSite({ rule: 'persona-anchor', file }, personaInput, offset, match, after)
     return after
   })
 
-  out = out.replace(COMMENT_REFERENCE, (match, offset) => {
+  const commentInput = afterPersona
+  const rewritten = commentInput.replace(COMMENT_REFERENCE, (match, offset) => {
     counts.comment += 1
-    sites.push({ rule: 'comment', line: lineOf(text, offset), before: lineText(offset), after: lineText(offset).replace(match, packageName) })
+    recordSite({ rule: 'comment' }, commentInput, offset, match, packageName)
     return packageName
   })
 
   sites.sort((a, b) => a.line - b.line)
-  return { text: out, counts, sites }
+  return { text: rewritten, counts, sites }
 }
 
 /**
@@ -225,7 +260,7 @@ export function baselineProblems(text, counts) {
   const occurrences = (needle) => text.split(needle).length - 1
   if (counts.name !== 1) problems.push(`expected exactly one self-reference row to invert, inverted ${counts.name}`)
   if (counts.persona !== 9) problems.push(`expected exactly 9 persona anchors to invert, inverted ${counts.persona}`)
-  if (counts.comment !== 2) problems.push(`expected exactly two header comment occurrences to invert, inverted ${counts.comment}`)
+  if (counts.comment !== 2) problems.push(`expected exactly two pre-port package-name occurrences outside the self-reference and the persona anchors, one of them the header comment; inverted ${counts.comment}`)
   const selfReference = `name: '${LOCAL_PACKAGE}/persona'`
   if (occurrences(selfReference) !== 1) problems.push(`expected exactly one "${selfReference}" row, found ${occurrences(selfReference)}`)
   if (occurrences(`'./node_modules/${LOCAL_PACKAGE}/personas/`) !== 9) {
@@ -253,7 +288,7 @@ export function productProblems(text, packageName, counts) {
   if (occurrences("personas', '") !== 9) problems.push(`expected 9 rewritten persona anchors, found ${occurrences("personas', '")}`)
   if (counts.name !== 1) problems.push(`expected exactly one self-reference row to rewrite, rewrote ${counts.name}`)
   if (counts.persona !== 9) problems.push(`expected exactly 9 persona anchors to rewrite, rewrote ${counts.persona}`)
-  if (counts.comment !== 2) problems.push(`expected exactly two header comment occurrences to rewrite, rewrote ${counts.comment}`)
+  if (counts.comment !== 2) problems.push(`expected exactly two pre-port package-name occurrences outside the self-reference and the persona anchors, one of them the header comment; rewrote ${counts.comment}`)
   return problems
 }
 

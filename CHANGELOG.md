@@ -30,7 +30,7 @@ copied modules, `A9`/`A12`/`A13`/`A15` for the licence documents and the patch).
 **Counts.** The tool now runs **22** structural and license assertions rather than 21, and the test
 suite totals **56** tests rather than 55.
 
-## [0.3.0] — 2026-11-02
+## [0.3.0] — 2026-11-04
 
 **What this release is for.** The package now ships its own caveman skill and mounts the module that
 makes it authoritative, so a deployment no longer depends on an out-of-band skill directory and an

@@ -298,6 +298,8 @@ sha，发布之后用版本号。
 - 在 skill catalog 里 runtime 注册 `caveman-ultra`，正文读自包内 `skills/caveman-ultra/SKILL.md`。
 
 挂载位置在根层而不是某个 preset 内，所以它覆盖本进程里的每个会话，不只覆盖选中本 preset 的那些。
+这一点是**结构上的预期**（根层即 host plane），本版**没有用真实会话确认 catalog 可见性**——沙箱里没有
+provider 凭据，能验的只是注册调用本身。
 
 **旧副本会被取代。** 若环境里另有一条名为 `caveman` 的 skill（例如 `$DSH_HOME/skills/caveman`，正文
 默认 `full`），loader 文本会把那条标成「本部署已取代的旧副本（默认 full）」，并要求按 `caveman-ultra`

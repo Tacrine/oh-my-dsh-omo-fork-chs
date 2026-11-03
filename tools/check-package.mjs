@@ -886,11 +886,12 @@ function main() {
   // The two anchor lists below carry a property the entry-set comparison above does
   // not: each path here is checked against both blocks, so a path that is covered by
   // the block it should not be in fails as well as one that is missing from the block
-  // it should be in. The lists are pinned to the same ten mit entries as
-  // `EXPECTED_SCOPE.mit`, so no path can be named in the scope block without also
-  // being resolved against the block that claims it.
+  // it should be in. Each list carries one anchor per entry of its `EXPECTED_SCOPE`
+  // counterpart — ten mit anchors for the ten mit entries before this package shipped
+  // its own module and skill, twelve now — and a directory entry is anchored by a real
+  // path inside it, so the prefix is proven to cover something rather than to exist.
   const SUL_ANCHORS = ['baseline/cordis.patch.yml', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'personas/atlas.md']
-  const MIT_ANCHORS = ['README.md', 'CHANGELOG.md', 'package.json', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', '.gitattributes', 'baseline/README.md', 'NOTICE.md']
+  const MIT_ANCHORS = ['README.md', 'CHANGELOG.md', 'package.json', 'caveman-autoload.mjs', 'skills/caveman-ultra/SKILL.md', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', '.gitattributes', 'baseline/README.md', 'NOTICE.md']
   const blockFor = (id) => scopeBlocks.find((block) => block.id === id)
   const blockCovers = (block, path) => block.entries.some((entry) => entryMatches(entry, path))
   for (const [id, expected] of Object.entries(EXPECTED_SCOPE)) {
