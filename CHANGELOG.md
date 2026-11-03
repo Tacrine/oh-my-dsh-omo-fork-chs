@@ -30,6 +30,35 @@ copied modules, `A9`/`A12`/`A13`/`A15` for the licence documents and the patch).
 **Counts.** The tool now runs **22** structural and license assertions rather than 21, and the test
 suite totals **56** tests rather than 55.
 
+## [0.3.0] — 2026-11-02
+
+**What this release is for.** The package now ships its own caveman skill and mounts the module that
+makes it authoritative, so a deployment no longer depends on an out-of-band skill directory and an
+`AGENTS.md` paragraph to get the behaviour.
+
+### Added
+
+- **`caveman-autoload`** — a module mounted by a root-layer (host plane) row of the bundle patch. It
+  registers the system prompt section `caveman:loader` at order 60 and registers the `caveman-ultra`
+  skill in the runtime catalog; the section text is a provider, so the level is read per assembly
+  rather than frozen at mount.
+- **`skills/caveman-ultra/`** — the shipped skill, defaulting to **ultra**. Its description is parsed
+  out of the file's own frontmatter rather than duplicated in the module, so the catalog entry and
+  the file cannot disagree.
+- **`test/caveman-loader.test.mjs`** — drives `apply()` through a recording context and asserts the
+  two registrations, the description equality, the section order, and that the text carries no prompt
+  variable and no slash command.
+
+### Changed
+
+- **The caveman skill in force is now named `caveman-ultra`, not `caveman`.** A pre-existing skill
+  named `caveman` in the environment is not overwritten; the loader text names it as the copy this
+  deployment has superseded (its text defaults to `full`) and directs that `caveman-ultra`'s rules
+  apply. Anything that selected the old name by hand now selects the new one.
+- **Levelling is prompt-only.** A level declared in the request, or `OMO_CAVEMAN_LEVEL` in the
+  deployment, changes the level named in the prompt text. No claim is made that the resulting output
+  differs per level: that behaviour has not been exercised in this release.
+
 ## [0.2.3] — 2026-10-31
 
 **What this release is for.** 0.2.2 wrote an unregistered prompt variable into the persona suffix,
@@ -376,7 +405,8 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   repositories with separate packages, preset ids and scope mappings, and neither affects the other.
 - A missing or empty persona file fails the mount by design, naming the file in the error.
 
-[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.3.0
 [0.2.3]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.3
 [0.2.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.0
 [0.1.1]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.1.1

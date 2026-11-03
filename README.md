@@ -282,6 +282,43 @@ sha，发布之后用版本号。
 调用 CLI。它**不驱动 GUI**：启动器自身的界面行为、启动项持久化、以及第 4 步的复制路径都没有被自动化
 覆盖。
 
+## caveman 全局加载（包内）
+
+本包随附一个 caveman skill，并在安装后接管本部署的 caveman 规则。下面是它做什么、想达到什么效果；
+**这是设计描述，不是「已在本机验证生效」的报告**——本版没有用真实 provider 跑过行为验证。
+
+**随包 skill。** 包里带 `skills/caveman-ultra/`，skill 名 `caveman-ultra`，默认级别 **ultra**。正文
+与源 caveman 技能同源，差别只在默认级别、描述、触发词与边界段按本部署改写，并且不含本部署不提供的
+斜杠命令。
+
+**生效方式。** 本包在 **bundle 根层（host plane）** 挂一个模块 `caveman-autoload.mjs`，它做两件事：
+
+- 注册一条 system prompt section，名为 `caveman:loader`，order 60（落在 deployment persona 的 0 与
+  plan policy 的 500 之间）；
+- 在 skill catalog 里 runtime 注册 `caveman-ultra`，正文读自包内 `skills/caveman-ultra/SKILL.md`。
+
+挂载位置在根层而不是某个 preset 内，所以它覆盖本进程里的每个会话，不只覆盖选中本 preset 的那些。
+
+**旧副本会被取代。** 若环境里另有一条名为 `caveman` 的 skill（例如 `$DSH_HOME/skills/caveman`，正文
+默认 `full`），loader 文本会把那条标成「本部署已取代的旧副本（默认 full）」，并要求按 `caveman-ultra`
+的规则处理。同名与否两条都会进 catalog，所以这层排除靠的是文本点名，不是覆盖掉那条注册。
+
+**切级方式。** 两个途径：在**请求里直接声明级别**，或在部署时设环境变量 `OMO_CAVEMAN_LEVEL`。合法值
+是 `lite` / `full` / `ultra` / `wenyan-lite` / `wenyan-full` / `wenyan-ultra` / `off`，未设置时取
+`ultra`。**切级是 prompt-only**：级别只改变提示文本里写明的级别，本版没有对各级别实际的输出行为做
+验证。
+
+**关闭。** 说 `stop caveman` 或 `normal mode`。
+
+**覆盖缺口是 9/10。** 主 preset 加 9 个子 preset，其中 9 个既有 skill provider 也有 skill 工具，能
+列出并调用这个 skill；`omo-multimodal-looker` 两者都没有，它只收到 loader 文本，拿不到 skill 本身。
+这是已知取舍，没有为它强行补一条 skill 行。
+
+**与 `$DSH_HOME/AGENTS.md` 的关系。** 包内 loader 的文本已覆盖那段装载器的作用范围；若 `AGENTS.md`
+里仍留着旧的 caveman 装载器段，它不再必需——是否移除由使用者按自己的部署自行决定。
+
+**没有斜杠命令。** 本部署不提供该命令插件，包内也没有 caveman 斜杠命令；切级只走上面那两条路。
+
 ## 许可
 
 本仓库**双许可**，两个许可不是二选一：每个文件恰好被其中一个覆盖。它**不是**仅 MIT。
