@@ -22,10 +22,13 @@ source because the three port rewrites transform the package reference and perso
 Re-applying those rewrites (`node tools/port-patch.mjs --src baseline`) reproduces the published
 patch byte for byte, which is what the verification chain proves.
 
-The baseline also carries one `@local/dsh-preset-omo-fork-chs/caveman` row. That is the inverse
-rewrite of the published `caveman` plugin row, so it is this repository's own pre-port spelling
-rather than a stray reference: the baseline is a frozen snapshot of the source patch, and the source
-patch now mounts a second module of this package by name.
+The baseline also carries one plugin mount row written in the pre-port scope. That row is the
+inverse rewrite of the published `caveman` plugin row — the same transformation every other pre-port
+reference in this file went through — so it is this repository's own spelling of a mount rather than
+a stray reference: the baseline is a frozen snapshot of the source patch, and the source patch now
+mounts a second module of this package by name. This sidecar names the row by its shape rather than
+by its literal text; the file itself carries the bytes, and the count that matters is asserted
+against the file, not against prose.
 
 ## Upstream provenance
 
