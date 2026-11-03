@@ -19,19 +19,22 @@ preset id 是 `omo-fork-chs`，`order` 是 `11`，与 `tri-agent` **并存**：�
   注入：它在 `isolate: { planMode: true }` realm 内部，从外部注入不会解析成功。
 
 除身份之外，preset 还挂载编码工具链：文件系统与 shell 工具、后台任务、skills、goals、plan mode、
-compaction、委派与 workflows。patch 共 173 条 `- id:` 条目，分属 10 个 preset 声明：主 preset
-`omo-fork-chs` 挂 18 个插件条目，另外 9 个子 preset 分别挂 11 到 13 个（视觉类那个挂 4 个）。本包
-附带 **11 个 persona 文件**；主 preset 的插件自己读取 `atlas.md` 与 `prometheus.md`，其余 9 个由
-对应子 preset 的 `dsh-persona` 条目读取。
+compaction、委派与 workflows。patch 共 174 条 `- id:` 条目，分属 10 个 preset 声明加 1 条根层
+（host plane）挂载：主 preset `omo-fork-chs` 挂 18 个插件条目，另外 9 个子 preset 分别挂 11 到 13
+个（视觉类那个挂 4 个），根层再挂 1 条 `caveman-autoload`。本包附带 **11 个 persona 文件**；主
+preset 的插件自己读取 `atlas.md` 与 `prometheus.md`，其余 9 个由对应子 preset 的 `dsh-persona`
+条目读取。
 
 ## 随包内容
 
 | 文件 | 用途 |
 | --- | --- |
-| `cordis.patch.yml` | 已发布的 bundle patch：preset 声明（`id: preset-omo-fork-chs`、`config.id: omo-fork-chs`、`config.name: 'Oh My DSH Chs - OMO Fork'`、`order: 11`）及其 `plugins:` 列表。共 946 行，11 处改写。 |
+| `cordis.patch.yml` | 已发布的 bundle patch：preset 声明（`id: preset-omo-fork-chs`、`config.id: omo-fork-chs`、`config.name: 'Oh My DSH Chs - OMO Fork'`、`order: 11`）及其 `plugins:` 列表，末尾另有一条根层 `caveman-autoload` 挂载。共 950 行，12 处改写。 |
 | `plan-aware-persona.mjs` | 包入口，注册 plan-aware persona 前缀与配置的 suffix。以 `./persona` 导出。 |
+| `caveman-autoload.mjs` | 根层挂载的插件：注册 `caveman-ultra` skill，并加一条 order 60 的提示段说明本部署的 caveman 规则。以 `./caveman` 导出。 |
 | `index.js` | 包根。它刻意留空：bundle 的行为在 `cordis.patch.yml` 与 `./persona` 里。 |
 | `personas/` | 11 个 persona 文件，已译为简体中文。 |
+| `skills/` | skill 正文。目前只有 `skills/caveman-ultra/` 一个 skill，其 `SKILL.md` 由 `caveman-autoload.mjs` 在挂载时读取。 |
 | `baseline/` | 移植前 patch 的冻结快照，外加一份说明它能证明什么、不能证明什么的 sidecar。 |
 | `tools/` | 移植、验证、baseline 与包结构检查的命令行工具。 |
 | `test/` | 零依赖测试套件，用 `node --test` 运行。 |
@@ -165,7 +168,7 @@ DSH profile 的 `.npmrc` 设了 `auto-install-peers=false`，这些 peer 是**�
 下面全部在仓库根目录运行，**无需安装**。只有 `check:full` 例外，它需要 runtime。
 
 ```powershell
-# 1. 测试套件。零依赖。56 个测试。
+# 1. 测试套件。零依赖。74 个测试。
 npm run test
 
 # 2. 检查链。零依赖，不需要 runtime。
@@ -186,8 +189,11 @@ npm run port -- --src <dir holding cordis.patch.yml>
 
 每一条各自证明什么：
 
-- **`npm run test`** 运行 `node:test` 套件：三组正向改写、反向改写及其往返、参数解析器、从两侧检验
-  机器路径模式、零字节守卫，以及包检查的失败路径。共 56 个测试，不需要安装任何东西。
+- **`npm run test`** 运行 `node:test` 套件，共 74 个测试，不需要安装任何东西。九个测试文件各自覆盖
+  一件事：三组正向改写、反向改写及其往返、从已发布的 patch 重新推导 baseline、参数解析器、从两侧
+  检验机器路径模式、零字节守卫、包检查的失败路径、提示变量守卫（`prompt-variable-guard`），以及
+  caveman loader 的注册契约（`caveman-loader`）。另有 `real-install-verify` 一个真机安装用例：未设
+  `DSH_BIN` 时它整组 skip，所以干净克隆里看到的 `skipped` 就是它。
 - **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。
 
   前者运行一整套结构与许可断言，覆盖：manifest 身份；四个 `exports`；唯一一条自引用条目；九条
@@ -198,10 +204,10 @@ npm run port -- --src <dir holding cordis.patch.yml>
   每份带内部锚点的文档中锚点能否解析到标题；patch 的形状。
 
   后者证明已发布的 patch 仍等于三项已记录改写从冻结 baseline 算出的结果，并报告
-  `verdict: "IDENTICAL"` 与 11 处改写点。两者都**零依赖**，所以在干净克隆里无需安装即可通过。
+  `verdict: "IDENTICAL"` 与 12 处改写点。两者都**零依赖**，所以在干净克隆里无需安装即可通过。
 - **`npm run check:full`** 就是单独运行 `node tools/verify-patch.mjs`。当 `DSH_RUNTIME` 指向一个包含
   `js-yaml` 与 `@deepseek-ai/cordis-plugin-include` 的绝对 `node_modules` 时，校验器会用真正的
-  entry-list dialect 解析两份文档并做结构化比对，报告 `yamlCompare: "ok"` 与 `sites.length` 为 11。
+  entry-list dialect 解析两份文档并做结构化比对，报告 `yamlCompare: "ok"` 与 `sites.length` 为 12。
 
   **没有 runtime 时它报告 `yamlCompare: "skipped"`，仍以 0 退出**，所以只看退出码不算证据，必须断言
   字段。这也是这一步与 `check` 分开、以及存在 `npm run setup:verify` 的原因：它把 runtime 装进

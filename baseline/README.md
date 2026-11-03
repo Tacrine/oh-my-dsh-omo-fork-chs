@@ -12,15 +12,20 @@ that this fork vendors from. It was captured by reversing the three port rewrite
 and applies the inverse of the rules in `tools/lib/rewrites.mjs`.
 
 - Source: the repository's own `cordis.patch.yml` (the published agentPreset form)
-- Source byte count: 42690
-- Source line count: 946
-- Source SHA256: `4AB1FC933ED399DE27E9169343E33B87B78BEE4C91990FCB74B0102BDF7EB380`
+- Source byte count: 42784
+- Source line count: 950
+- Source SHA256: `248602D919D92F1514371EDC8AAE985E5F4A0243B9435BAE5663B298FE8D0836`
 
-The baseline file in this directory is the **pre-port** form: 41784 bytes, 946 lines,
-SHA256 `D37E3AD9105F73BC8884392CC326B556049FC54D3FAD5DCC002DA7B32E900546`. It differs from the
+The baseline file in this directory is the **pre-port** form: 41875 bytes, 950 lines,
+SHA256 `E4DF52290D0770A12C5E854822B21BB7D64BD176DE753F5A8706780F991CEAD7`. It differs from the
 source because the three port rewrites transform the package reference and persona-file paths.
 Re-applying those rewrites (`node tools/port-patch.mjs --src baseline`) reproduces the published
 patch byte for byte, which is what the verification chain proves.
+
+The baseline also carries one `@local/dsh-preset-omo-fork-chs/caveman` row. That is the inverse
+rewrite of the published `caveman` plugin row, so it is this repository's own pre-port spelling
+rather than a stray reference: the baseline is a frozen snapshot of the source patch, and the source
+patch now mounts a second module of this package by name.
 
 ## Upstream provenance
 
