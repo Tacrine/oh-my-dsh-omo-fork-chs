@@ -49,14 +49,16 @@ function minimalPatch() {
     `          - id: persona-plugin`,
     `            name: '${LOCAL_PACKAGE}/persona'`,
     ...PERSONA_FILES.map((file) => `          - id: row-${file}\n            persona: !!js process.getBuiltinModule('node:fs').readFileSync(${localAnchor(file)}, 'utf8')`),
+    `          - id: caveman-autoload`,
+    `            name: '${LOCAL_PACKAGE}/caveman'`,
     '',
   ].join('\n')
 }
 
-test('the inverse rewrite groups count exactly 1 / 9 / 1', () => {
+test('the inverse rewrite groups count exactly 1 / 9 / 2', () => {
   const ported = applyRewrites(minimalPatch(), PACKAGE)
   const inverse = applyInverseRewrites(ported.text, PACKAGE)
-  assert.deepEqual(inverse.counts, { name: 1, persona: 9, comment: 1 })
+  assert.deepEqual(inverse.counts, { name: 1, persona: 9, comment: 2 })
 })
 
 test('forward then inverse returns the original text exactly', () => {
@@ -80,10 +82,10 @@ test('the derived baseline satisfies the baseline invariants', () => {
   assert.deepEqual(baselineProblems(inverse.text, inverse.counts), [])
 })
 
-test('the derived baseline carries eleven pre-port occurrences', () => {
+test('the derived baseline carries twelve pre-port occurrences', () => {
   const ported = applyRewrites(minimalPatch(), PACKAGE)
   const inverse = applyInverseRewrites(ported.text, PACKAGE)
-  assert.equal(inverse.text.split(LOCAL_PACKAGE).length - 1, 11)
+  assert.equal(inverse.text.split(LOCAL_PACKAGE).length - 1, 12)
   assert.equal(inverse.text.split(`'./node_modules/${LOCAL_PACKAGE}/personas/`).length - 1, 9)
   assert.equal(inverse.text.split(`name: '${LOCAL_PACKAGE}/persona'`).length - 1, 1)
 })

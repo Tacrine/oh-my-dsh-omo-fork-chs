@@ -944,3 +944,7 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+
+- insert:
+    - id: caveman-autoload
+      name: '@tacrine_f/oh-my-dsh-omo-fork-chs/caveman'
