@@ -51,14 +51,16 @@ function minimalPatch() {
     ...PERSONA_FILES.map((file) => `          - id: row-${file}\n            persona: !!js process.getBuiltinModule('node:fs').readFileSync(${localAnchor(file)}, 'utf8')`),
     `          - id: caveman-autoload`,
     `            name: '${LOCAL_PACKAGE}/caveman'`,
+    `          - id: tool-gate`,
+    `            name: '${LOCAL_PACKAGE}/tool-gate'`,
     '',
   ].join('\n')
 }
 
-test('the three rewrite groups count exactly 1 / 9 / 2', () => {
+test('the three rewrite groups count exactly 1 / 9 / 3', () => {
   const result = applyRewrites(minimalPatch(), PACKAGE)
-  assert.deepEqual(result.counts, { name: 1, persona: 9, comment: 2 })
-  assert.equal(result.sites.length, 12, 'the three groups touch twelve sites in total')
+  assert.deepEqual(result.counts, { name: 1, persona: 9, comment: 3 })
+  assert.equal(result.sites.length, 13, 'the three groups touch thirteen sites in total')
 })
 
 test('the persona anchors are rewritten in source order', () => {

@@ -70,7 +70,7 @@ import { pathToFileURL } from 'node:url'
 /** The package identity this repository is expected to publish under. */
 const EXPECTED = {
   name: '@tacrine_f/oh-my-dsh-omo-fork-chs',
-  version: '0.3.0',
+  version: '0.4.0',
   license: 'SEE LICENSE IN NOTICE.md',
 }
 
@@ -302,7 +302,7 @@ const LOCAL_CLASSES = [
   {
     id: 'baseline',
     description: 'the frozen pre-port baseline, which is the pre-port text and therefore carries every occurrence',
-    expect: 12,
+    expect: 13,
     matches: (path) => path === 'baseline/cordis.patch.yml',
   },
   {
@@ -881,17 +881,17 @@ function main() {
   // cover a real file inside them.
   const EXPECTED_SCOPE = {
     sul: ['personas/', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'baseline/cordis.patch.yml'],
-    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', 'caveman-autoload.mjs', 'skills/', '.gitignore', '.gitattributes', 'README.md', 'CHANGELOG.md', 'NOTICE.md'],
+    mit: ['tools/', 'test/', '.github/', 'baseline/README.md', 'package.json', 'caveman-autoload.mjs', 'tool-gate.mjs', 'skills/', '.gitignore', '.gitattributes', 'README.md', 'CHANGELOG.md', 'NOTICE.md'],
   }
   // The two anchor lists below carry a property the entry-set comparison above does
   // not: each path here is checked against both blocks, so a path that is covered by
   // the block it should not be in fails as well as one that is missing from the block
   // it should be in. Each list carries one anchor per entry of its `EXPECTED_SCOPE`
   // counterpart — ten mit anchors for the ten mit entries before this package shipped
-  // its own module and skill, twelve now — and a directory entry is anchored by a real
+  // its own module and skill, thirteen now — and a directory entry is anchored by a real
   // path inside it, so the prefix is proven to cover something rather than to exist.
   const SUL_ANCHORS = ['baseline/cordis.patch.yml', 'cordis.patch.yml', 'plan-aware-persona.mjs', 'index.js', 'personas/atlas.md']
-  const MIT_ANCHORS = ['README.md', 'CHANGELOG.md', 'package.json', 'caveman-autoload.mjs', 'skills/caveman-ultra/SKILL.md', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', '.gitattributes', 'baseline/README.md', 'NOTICE.md']
+  const MIT_ANCHORS = ['README.md', 'CHANGELOG.md', 'package.json', 'caveman-autoload.mjs', 'tool-gate.mjs', 'skills/caveman-ultra/SKILL.md', 'tools/check-package.mjs', 'test/parse-args.test.mjs', '.github/workflows/ci.yml', '.gitignore', '.gitattributes', 'baseline/README.md', 'NOTICE.md']
   const blockFor = (id) => scopeBlocks.find((block) => block.id === id)
   const blockCovers = (block, path) => block.entries.some((entry) => entryMatches(entry, path))
   for (const [id, expected] of Object.entries(EXPECTED_SCOPE)) {
@@ -981,9 +981,9 @@ function main() {
 
   // A16: the patch's shape, counted as substrings because the rows are indented.
   const patchLines = patchText.split('\n').length - (patchText.endsWith('\n') ? 1 : 0)
-  if (patchLines !== 950) fail('A16', PATCH, `has ${patchLines} lines, expected 950`)
+  if (patchLines !== 959) fail('A16', PATCH, `has ${patchLines} lines, expected 959`)
   const idRows = countOf(patchText, '- id:')
-  if (idRows !== 174) fail('A16', PATCH, `has ${idRows} "- id:" occurrences, expected 174 (counted as a substring: the rows are indented, so an anchored pattern reports 0)`)
+  if (idRows !== 175) fail('A16', PATCH, `has ${idRows} "- id:" occurrences, expected 175 (counted as a substring: the rows are indented, so an anchored pattern reports 0)`)
   record('A16', PATCH, `${patchLines} line(s), ${idRows} "- id:" occurrence(s)`)
 
   // A17: the two modules the package copies out of this repository, pinned by

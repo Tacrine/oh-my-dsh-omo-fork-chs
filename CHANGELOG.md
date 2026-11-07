@@ -4,6 +4,29 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-11-08
+
+**What this release is for.** The omo-fork preset now gates out the five MCP servers the
+deployment mounts process-wide, so the preset's agents no longer carry their whole tool
+catalog as schema weight on every request.
+
+### Added
+
+- **`tool-gate`** — a module mounted inside the preset's agent scope that expands five
+  configured MCP server-name prefixes (`mcp__EIDE__`, `mcp__tavily-proxy__`,
+  `mcp__codebase-memory-mcp__`, `mcp__cubemx__`, `mcp__cortex-debug-mcp__`) against the
+  live tool registry on every `tools/change` event and restricts those tools out of the
+  catalog. A re-entry guard, a signature check and an empty-deny no-op keep it stable while
+  the restriction's own events echo back through the same channel.
+- **`test/tool-gate.test.mjs`** — drives `apply()` through a recording context and asserts
+  the export shape, the prefix expansion, the empty-deny no-op and the re-entry guard.
+
+### Changed
+
+- **The baseline, the patch and the port tooling now count thirteen pre-port package-name
+  occurrences and thirteen rewrite sites.** The new plugin row is the third non-persona
+  package-name site, after the self-reference and the header comment.
+
 ## [Unreleased]
 
 **What this is for.** `A5` checks that `files[]` *contains* every entry in `REQUIRED_FILES`, but no
@@ -405,7 +428,8 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   repositories with separate packages, preset ids and scope mappings, and neither affects the other.
 - A missing or empty persona file fails the mount by design, naming the file in the error.
 
-[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.3.0
 [0.2.3]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.3
 [0.2.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.0

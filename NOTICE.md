@@ -54,10 +54,14 @@ The changes made to the upstream content, relative to upstream commit
    any other. The paths are not reproduced here because this document is itself covered by
    that scan.
 
-No upstream licensing, copyright, or other notice was altered, removed, or obscured by
-these modifications. The persona documents and the two copied modules contain no license or
-copyright notice of their own, so no notice was removed from them and none was added to
-them, which keeps them byte-comparable with their source.
+9. **A tool gate hides five MCP servers' tools inside the omo-fork preset.** The bundle
+   mounts a new `tool-gate` module (this repository's own work, MIT-licensed) in the preset's
+   plugin list, where the agent scope is available. The gate expands five configured MCP
+   server-name prefixes (`mcp__EIDE__`, `mcp__tavily-proxy__`, `mcp__codebase-memory-mcp__`,
+   `mcp__cubemx__`, `mcp__cortex-debug-mcp__`) against the live tool registry on every
+   `tools/change` event and restricts those tools out of the preset's catalog. The re-entry
+   guard, signature deduplication and empty-deny no-op follow the same pattern as
+   `dsh-skill-mcp-panel`'s `tool-filter` (MIT-licensed); the concept is reused, not the code.
 
 ## Attribution
 
@@ -101,6 +105,7 @@ test/
 baseline/README.md
 package.json
 caveman-autoload.mjs
+tool-gate.mjs
 skills/
 .gitignore
 .gitattributes

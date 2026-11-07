@@ -59,7 +59,7 @@ import {
 const EXPECTED_DECLARATION = { id: 'preset-omo-fork-chs', name: 'Oh My DSH Chs - OMO Fork', order: 11 }
 
 /** The number of rewrite sites the three rules must touch. */
-const EXPECTED_SITES = 12
+const EXPECTED_SITES = 13
 
 /** The placeholder every `__jsExpr` value is normalised to before comparing. */
 const JS_EXPR_PLACEHOLDER = '<js-expr>'
