@@ -98,7 +98,7 @@ function fakeHost({ entries = loaderEntries(), registryNames = REGISTRY_NAMES } 
     const { scope, masks, disposals } = fakeScope(registryNames)
     const agent = {
       id,
-      session: cwd === undefined ? {} : { meta: { cwd } },
+      session: { header: cwd === undefined ? {} : { cwd } },
       ctx: scope,
       masks,
       disposals,

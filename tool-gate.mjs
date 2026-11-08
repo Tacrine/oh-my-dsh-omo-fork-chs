@@ -241,6 +241,21 @@ function toolNamesOf(known, server) {
 }
 
 /**
+ * The working directory one agent's session recorded.
+ *
+ * A live Session exposes its directory on the durable header, `header.cwd`; the
+ * workspace policy is resolved from that path, so reading anywhere else leaves
+ * the policy permanently unreadable and every server unavailable. `meta.cwd`
+ * stays as a fallback for hosts that only carry the directory on agent meta.
+ *
+ * @param agent - the calling agent.
+ * @returns the session working directory, or undefined when it recorded none.
+ */
+function sessionCwd(agent) {
+  return agent?.session?.header?.cwd ?? agent?.session?.meta?.cwd
+}
+
+/**
  * Mount the per-agent mask plugin and register the three model-facing tools.
  *
  * @param ctx - the preset's agent scope context.
@@ -390,7 +405,7 @@ export function apply(ctx) {
       const entry = {
         holder: { sync: () => {} },
         enabled: new Set(),
-        cwd: agent.session?.meta?.cwd,
+        cwd: sessionCwd(agent),
         // The mounted child fiber is the only handle that lifts this agent's
         // restriction, so it has to be kept: without it a remounted preset would
         // stack a second mask plugin on the same scope while the first one's
@@ -449,7 +464,7 @@ export function apply(ctx) {
     // and an agent whose scope refused the mount. Reporting the second as a
     // missing session would send the caller looking for the wrong problem.
     if (entry === undefined) throw new Error(`agent scope is not restrictable: ${id ?? 'unknown agent'}`)
-    entry.cwd = agent.session?.meta?.cwd
+    entry.cwd = sessionCwd(agent)
     entry.holder.sync()
     return entry
   }
@@ -492,7 +507,7 @@ export function apply(ctx) {
       if (agent === undefined) throw new Error('no agent context: list_mcp_servers needs a session')
       attach(agent)
       const entry = agents.get(agent.id)
-      const cwd = agent.session?.meta?.cwd
+      const cwd = sessionCwd(agent)
       const discovered = discoverServers(ctx)
       const usable = usableServers(discovered, readWorkspaceConfig(cwd))
       if (usable.length === 0) {
