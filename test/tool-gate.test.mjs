@@ -37,12 +37,22 @@ const DENY = [
   'mcp__cortex-debug-mcp__',
 ]
 
+/** The five server names the preset configures for the meta tools. */
+const SERVER_NAMES = [
+  'EIDE',
+  'tavily-proxy',
+  'codebase-memory-mcp',
+  'cubemx',
+  'cortex-debug-mcp',
+]
+
 /** Build a recording context standing in for the preset's agent scope. */
 function recordingContext(registryNames = REGISTRY_NAMES) {
   const events = []
   const restricted = []
   const unsubscribed = []
   const cleanup = []
+  const registered = []
   let applied
   const ctx = {
     tools: {
@@ -55,6 +65,9 @@ function recordingContext(registryNames = REGISTRY_NAMES) {
           applied = undefined
           unsubscribed.push(deny)
         }
+      },
+      register(definition) {
+        registered.push(definition)
       },
     },
     on(event, handler) {
@@ -72,7 +85,7 @@ function recordingContext(registryNames = REGISTRY_NAMES) {
     // stop. Each recorded handler runs once per event.
     for (const [, handler] of events) handler(reason)
   }
-  return { ctx, events, restricted, unsubscribed, cleanup, trigger }
+  return { ctx, events, restricted, unsubscribed, cleanup, registered, trigger }
 }
 
 const MODULE_URL = pathToFileURL(join(import.meta.dirname, '..', 'tool-gate.mjs')).href
@@ -157,4 +170,68 @@ test('the cleanup disposes the restriction in force', async () => {
   rec.cleanup[0]()
   assert.equal(rec.unsubscribed.length, 1)
   assert.deepEqual(rec.unsubscribed[0], rec.restricted[0])
+})
+
+test('enable_mcp removes the server tools from the deny set and registers output schema', async () => {
+  const mod = await import(MODULE_URL)
+  const rec = recordingContext()
+  mod.apply(rec.ctx, { deny: DENY, serverNames: SERVER_NAMES })
+  // The base mask covered every server tool.
+  const base = rec.restricted[0]
+  assert.ok(base.includes('mcp__codebase-memory-mcp__search_graph'))
+  assert.ok(base.includes('mcp__EIDE__start_server'))
+  // Both meta tools registered with the output schema contract.
+  const names = rec.registered.map((d) => d.name)
+  assert.ok(names.includes('enable_mcp'))
+  assert.ok(names.includes('disable_mcp'))
+  for (const definition of rec.registered) {
+    assert.ok(definition.output?.schema, `${definition.name} must declare an output schema`)
+    assert.equal(typeof definition.output?.render, 'function')
+  }
+  const enable = rec.registered.find((d) => d.name === 'enable_mcp')
+  const result = await enable.execute({ server: 'codebase-memory-mcp' })
+  assert.match(result.message, /enabled tools from codebase-memory-mcp/)
+  // The undo of the per-server restriction and the reconcile emit tools/change
+  // echoes; the re-entry guard must leave the base mask intact for other servers.
+  assert.equal(rec.restricted.length, 2)
+  const second = rec.restricted[1]
+  assert.ok(!second.includes('mcp__codebase-memory-mcp__search_graph'))
+  assert.ok(second.includes('mcp__EIDE__start_server'))
+  // Disabling again re-adds the exact names.
+  const disable = rec.registered.find((d) => d.name === 'disable_mcp')
+  const result2 = await disable.execute({ server: 'codebase-memory-mcp' })
+  assert.match(result2.message, /disabled 1 tool/)
+  assert.ok(rec.unsubscribed.length >= 1)
+  const undos = rec.unsubscribed.flat()
+  assert.ok(undos.includes('mcp__codebase-memory-mcp__search_graph'))
+})
+
+test('disable_mcp re-enters the denied set with exact names', async () => {
+  const mod = await import(MODULE_URL)
+  const rec = recordingContext()
+  mod.apply(rec.ctx, { deny: DENY, serverNames: SERVER_NAMES })
+  const disable = rec.registered.find((d) => d.name === 'disable_mcp')
+  // Base mask already hides the server; disable re-applies exact names on top.
+  const result = await disable.execute({ server: 'EIDE' })
+  assert.match(result.message, /disabled 2 tools from EIDE/)
+  assert.equal(rec.restricted.length, 2)
+  assert.deepEqual(rec.restricted[1], ['mcp__EIDE__start_server', 'mcp__EIDE__stop_server'])
+})
+
+test('enable_mcp and disable_mcp throw for an unknown server', async () => {
+  const mod = await import(MODULE_URL)
+  const rec = recordingContext()
+  mod.apply(rec.ctx, { deny: DENY, serverNames: SERVER_NAMES })
+  const enable = rec.registered.find((d) => d.name === 'enable_mcp')
+  const disable = rec.registered.find((d) => d.name === 'disable_mcp')
+  await assert.rejects(() => enable.execute({ server: 'unknown-server' }), /unknown server: unknown-server/)
+  await assert.rejects(() => disable.execute({ server: 'unknown-server' }), /unknown server: unknown-server/)
+})
+
+test('no serverNames config registers no meta tools', async () => {
+  const mod = await import(MODULE_URL)
+  const rec = recordingContext()
+  mod.apply(rec.ctx, { deny: DENY })
+  assert.equal(rec.registered.length, 0)
+  assert.ok(!rec.restricted[0].some((n) => n === 'enable_mcp' || n === 'disable_mcp'))
 })

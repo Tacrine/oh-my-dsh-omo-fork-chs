@@ -18,6 +18,14 @@
  * synchronously, and this plugin subscribes to that same event — hence the
  * re-entry guard. Without it the first application would recurse forever.
  *
+ * The gate also exposes two meta tools, `enable_mcp` and `disable_mcp`, so the
+ * model can toggle one server's tools within a session. `enable_mcp` marks the
+ * server active and lifts its mask (its tools show from the next step);
+ * `disable_mcp` re-applies an exact-name restriction for that server on top of
+ * the base mask. The base mask deliberately skips prefixes whose server is
+ * currently active, so the next reconcile does not undo an enable. The meta
+ * tool names themselves never match `mcp__`, so the base mask cannot hide them.
+ *
  * @module tool-gate
  */
 
@@ -47,19 +55,28 @@ function expand(known, prefix) {
 }
 
 /**
- * Mask the configured tool prefixes for this preset's agents.
+ * Mask the configured tool prefixes for this preset's agents, and register the
+ * `enable_mcp` / `disable_mcp` meta tools when `serverNames` is configured.
  *
  * An absent or empty `deny` is a no-op rather than an empty mask: `restrict({})`
  * throws, and a preset that lists nothing means "keep everything".
  *
  * @param ctx - the preset's agent scope context.
- * @param config - optional `deny` list of tool names or name prefixes.
+ * @param config - optional `deny` list of tool names or name prefixes, and an
+ *   optional `serverNames` list that enables the meta tools.
  */
 export function apply(ctx, config) {
   const denyList = config?.deny ?? []
-  if (denyList.length === 0) return
+  const serverNames = config?.serverNames ?? []
+  if (denyList.length === 0 && serverNames.length === 0) return
 
-  /** Disposer of the restriction currently in force, if any. */
+  /** Per-server mask state, keyed by the `mcp__<server>__` prefix. */
+  const states = Object.fromEntries(serverNames.map((server) => [
+    `mcp__${server}__`,
+    { undo: undefined, active: false },
+  ]))
+
+  /** Disposer of the base restriction currently in force, if any. */
   let undo
   /** Signature of the set last applied; `null` means nothing is applied now. */
   let applied = null
@@ -69,7 +86,8 @@ export function apply(ctx, config) {
   let inside = false
 
   /**
-   * Reconcile the mask with the registry's current contents.
+   * Reconcile the base mask with the registry's current contents, skipping any
+   * server whose tools `enable_mcp` has made visible.
    */
   const syncOnce = () => {
     let known
@@ -80,7 +98,14 @@ export function apply(ctx, config) {
       return
     }
 
-    const usable = [...new Set(denyList.flatMap((prefix) => expand(known, prefix)))]
+    const activePrefixes = new Set(
+      Object.entries(states).filter(([, state]) => state.active).map(([prefix]) => prefix),
+    )
+    const usable = [...new Set(
+      denyList
+        .filter((prefix) => ![...activePrefixes].some((active) => prefix.startsWith(active)))
+        .flatMap((prefix) => expand(known, prefix)),
+    )]
     const signature = usable.slice().sort().join('\u0000')
     // An unchanged set needs no work: undo + view + restrict per event is the
     // difference between idle and a busy loop once tools are registered often.
@@ -124,6 +149,92 @@ export function apply(ctx, config) {
     } finally {
       inside = false
     }
+  }
+
+  if (serverNames.length > 0) {
+    const serverParameter = {
+      type: 'string',
+      enum: serverNames,
+      description: 'MCP server name',
+    }
+    const textOutput = {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          message: { type: 'string', description: 'What happened' },
+        },
+        required: ['message'],
+      },
+      render: (_args, value) => [{ type: 'text', text: value.message }],
+    }
+
+    ctx.tools.register({
+      name: 'enable_mcp',
+      description: 'Enable MCP tools for a server in the next step. Call this when you need tools from a server that is currently disabled.',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { server: serverParameter },
+        required: ['server'],
+      },
+      output: textOutput,
+      async execute(args) {
+        const prefix = `mcp__${args.server}__`
+        const state = states[prefix]
+        if (state === undefined) throw new Error(`unknown server: ${args.server}`)
+        if (state.active) return { message: `tools from ${args.server} are already enabled` }
+        // Mark active first so the tools/change echo of the undo (and the
+        // reconcile below) excludes this server from the base mask.
+        state.active = true
+        if (state.undo !== undefined) {
+          try {
+            state.undo()
+          } catch {
+            // A disposer that already ran needs no second report.
+          }
+          state.undo = undefined
+        }
+        // The base mask may still cover this server (no server-level undo was
+        // held); reconcile now so the tools show from the next step.
+        sync()
+        return { message: `enabled tools from ${args.server}; they will appear in the next step` }
+      },
+    })
+
+    ctx.tools.register({
+      name: 'disable_mcp',
+      description: 'Disable MCP tools for a server. Call this to hide those tools and save token overhead.',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        properties: { server: serverParameter },
+        required: ['server'],
+      },
+      output: textOutput,
+      async execute(args) {
+        const prefix = `mcp__${args.server}__`
+        const state = states[prefix]
+        if (state === undefined) throw new Error(`unknown server: ${args.server}`)
+        let known
+        try {
+          known = new Set(ctx.tools.view(undefined).restrictableNames)
+        } catch {
+          return { message: 'failed to read tool catalog' }
+        }
+        const usable = [...known].filter((toolName) => toolName.startsWith(prefix))
+        if (usable.length === 0) {
+          return { message: `no tools from ${args.server} to disable (server may not be connected)` }
+        }
+        try {
+          state.undo = ctx.tools.restrict({ deny: usable })
+          state.active = false
+          return { message: `disabled ${usable.length} tools from ${args.server}` }
+        } catch (error) {
+          return { message: `failed to disable: ${error.message}` }
+        }
+      },
+    })
   }
 
   ctx.on('tools/change', sync)

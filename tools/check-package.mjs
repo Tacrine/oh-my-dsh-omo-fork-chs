@@ -981,7 +981,7 @@ function main() {
 
   // A16: the patch's shape, counted as substrings because the rows are indented.
   const patchLines = patchText.split('\n').length - (patchText.endsWith('\n') ? 1 : 0)
-  if (patchLines !== 959) fail('A16', PATCH, `has ${patchLines} lines, expected 959`)
+  if (patchLines !== 965) fail('A16', PATCH, `has ${patchLines} lines, expected 965`)
   const idRows = countOf(patchText, '- id:')
   if (idRows !== 175) fail('A16', PATCH, `has ${idRows} "- id:" occurrences, expected 175 (counted as a substring: the rows are indented, so an anchored pattern reports 0)`)
   record('A16', PATCH, `${patchLines} line(s), ${idRows} "- id:" occurrence(s)`)
