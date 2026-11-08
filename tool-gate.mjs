@@ -115,6 +115,29 @@ function discoverFromPatchFile(path) {
 }
 
 /**
+ * Whether one loader entry is switched off.
+ *
+ * A loader `Entry` exposes an effective `disabled` getter that folds its own
+ * options, every owning parent group, and `!!js` expression results into one
+ * boolean, so reading only `options.disabled` would miss a group-disabled or
+ * expression-disabled MCP server and keep masking tools it never published. The
+ * getter evaluates configuration expressions and can therefore throw, which is
+ * not a reason to drop the server from the inventory: an unevaluable entry stays
+ * in it, and the mask then simply finds no tools for it.
+ *
+ * @param entry - one loader entry.
+ * @returns whether the entry is disabled.
+ */
+function entryDisabled(entry) {
+  if (entry?.options?.disabled === true) return true
+  try {
+    return entry?.disabled === true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Resolve the MCP inventory from the loader, falling back to the profile patch.
  *
  * @param ctx - the plugin context; `get('loader')` is looked up on it.
@@ -127,7 +150,7 @@ function discoverServers(ctx) {
     for (const entry of loader.entries()) {
       const options = entry?.options
       if (options?.name !== MCP_PLUGIN) continue
-      if (options?.disabled === true) continue
+      if (entryDisabled(entry)) continue
       const configured = options?.config?.serverName
       const serverName = typeof configured === 'string' && configured !== ''
         ? configured
@@ -269,9 +292,20 @@ export function apply(ctx) {
           const usable = usableServers(discovered, readWorkspaceConfig(entry.cwd))
           const entitled = new Set([...entry.enabled].filter((server) => usable.includes(server)))
           const deny = []
-          for (const server of discovered) {
-            if (entitled.has(server)) continue
-            deny.push(...toolNamesOf(names, server))
+          if (discovered.length === 0) {
+            // Fail closed. An empty inventory means the loader could not be read,
+            // not that this deployment has no MCP servers; reading it as "nothing
+            // to hide" would expose every `mcp__` tool, the exact opposite of the
+            // gate's contract. Mask whatever the registry can still see.
+            deny.push(...names.filter((toolName) => toolName.startsWith(MCP_PREFIX)))
+            if (deny.length > 0) {
+              warn('tool-gate: no MCP servers discovered from the loader; masking every mcp__ tool')
+            }
+          } else {
+            for (const server of discovered) {
+              if (entitled.has(server)) continue
+              deny.push(...toolNamesOf(names, server))
+            }
           }
           const signature = deny.slice().sort().join('\u0000')
           if (signature === applied) return
@@ -346,10 +380,16 @@ export function apply(ctx) {
         holder: { sync: () => {} },
         enabled: new Set(),
         cwd: agent.session?.meta?.cwd,
+        // The mounted child fiber is the only handle that lifts this agent's
+        // restriction, so it has to be kept: without it a remounted preset would
+        // stack a second mask plugin on the same scope while the first one's
+        // "deny everything" restriction stayed in force, hiding that agent's MCP
+        // tools for good.
+        fiber: undefined,
       }
       const { plugin, holder } = pluginFor(entry)
       entry.holder = holder
-      scope.plugin(plugin)
+      entry.fiber = scope.plugin(plugin)
       agents.set(id, entry)
       mounted.add(id)
     } catch (error) {
@@ -392,8 +432,12 @@ export function apply(ctx) {
     const agent = exec?.agent
     if (agent === undefined) throw new Error(`no agent context: ${toolName} needs a session`)
     attach(agent)
-    const entry = agents.get(agent.id)
-    if (entry === undefined) throw new Error(`no agent context: ${toolName} needs a session`)
+    const id = typeof agent.id === 'string' ? agent.id : undefined
+    const entry = id === undefined ? undefined : agents.get(id)
+    // Two different failures reach this point: no agent at all (handled above),
+    // and an agent whose scope refused the mount. Reporting the second as a
+    // missing session would send the caller looking for the wrong problem.
+    if (entry === undefined) throw new Error(`agent scope is not restrictable: ${id ?? 'unknown agent'}`)
     entry.cwd = agent.session?.meta?.cwd
     entry.holder.sync()
     return entry
@@ -550,6 +594,15 @@ export function apply(ctx) {
 
   ctx.effect(() => () => {
     live = false
+    // Dispose the mounted children before forgetting them: a fiber owns the
+    // restriction its plugin applied, so only its disposal lifts that mask.
+    for (const [id, entry] of [...agents.entries()]) {
+      try {
+        entry.fiber?.dispose?.()
+      } catch (error) {
+        warn(`tool-gate: disposing the mask for agent ${id} failed: ${error?.message ?? String(error)}`)
+      }
+    }
     agents.clear()
     mounted.clear()
   }, 'tool-gate: per-agent mask cleanup')
