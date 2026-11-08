@@ -235,3 +235,89 @@ test('no serverNames config registers no meta tools', async () => {
   assert.equal(rec.registered.length, 0)
   assert.ok(!rec.restricted[0].some((n) => n === 'enable_mcp' || n === 'disable_mcp'))
 })
+
+test('list_mcp_servers reports every configured server with its tool count', async () => {
+  const mod = await import(MODULE_URL)
+  const rec = recordingContext()
+  mod.apply(rec.ctx, { deny: DENY, serverNames: SERVER_NAMES })
+  const list = rec.registered.find((d) => d.name === 'list_mcp_servers')
+  assert.ok(list, 'list_mcp_servers must be registered')
+  const result = await list.execute({})
+  assert.equal(result.servers.length, 5)
+  const byName = Object.fromEntries(result.servers.map((entry) => [entry.server, entry]))
+  assert.deepEqual(byName.EIDE, { server: 'EIDE', connected: true, toolCount: 2, enabled: false })
+  assert.deepEqual(byName['tavily-proxy'], {
+    server: 'tavily-proxy',
+    connected: true,
+    toolCount: 1,
+    enabled: false,
+  })
+  assert.deepEqual(byName['codebase-memory-mcp'], {
+    server: 'codebase-memory-mcp',
+    connected: true,
+    toolCount: 1,
+    enabled: false,
+  })
+  assert.deepEqual(byName.cubemx, { server: 'cubemx', connected: true, toolCount: 1, enabled: false })
+  assert.deepEqual(byName['cortex-debug-mcp'], {
+    server: 'cortex-debug-mcp',
+    connected: true,
+    toolCount: 1,
+    enabled: false,
+  })
+  // The renderer emits the list as one JSON text block.
+  const blocks = list.output.render({}, result)
+  assert.equal(blocks.length, 1)
+  assert.deepEqual(JSON.parse(blocks[0].text), result.servers)
+})
+
+test('list_mcp_servers reports a disconnected server as zero tools', async () => {
+  const mod = await import(MODULE_URL)
+  // A registry without any MCP tool stands in for the servers not connected.
+  const rec = recordingContext(['tool-fs'])
+  mod.apply(rec.ctx, { deny: DENY, serverNames: SERVER_NAMES })
+  const list = rec.registered.find((d) => d.name === 'list_mcp_servers')
+  const result = await list.execute({})
+  assert.equal(result.servers.length, 5)
+  for (const entry of result.servers) {
+    assert.equal(entry.connected, false)
+    assert.equal(entry.toolCount, 0)
+  }
+})
+
+test('list_mcp_servers reports the enabled flag flipping with enable and disable', async () => {
+  const mod = await import(MODULE_URL)
+  const rec = recordingContext()
+  mod.apply(rec.ctx, { deny: DENY, serverNames: SERVER_NAMES })
+  const list = rec.registered.find((d) => d.name === 'list_mcp_servers')
+  const enable = rec.registered.find((d) => d.name === 'enable_mcp')
+  const disable = rec.registered.find((d) => d.name === 'disable_mcp')
+  const pick = (result) => result.servers.find((entry) => entry.server === 'codebase-memory-mcp')
+  assert.equal(pick(await list.execute({})).enabled, false)
+  await enable.execute({ server: 'codebase-memory-mcp' })
+  const during = pick(await list.execute({}))
+  assert.equal(during.enabled, true)
+  // Connection status is independent of the enabled flag.
+  assert.equal(during.connected, true)
+  await disable.execute({ server: 'codebase-memory-mcp' })
+  assert.equal(pick(await list.execute({})).enabled, false)
+})
+
+test('list_mcp_servers degrades to an empty list when the catalog cannot be read', async () => {
+  const mod = await import(MODULE_URL)
+  const rec = recordingContext()
+  mod.apply(rec.ctx, { deny: DENY, serverNames: SERVER_NAMES })
+  const list = rec.registered.find((d) => d.name === 'list_mcp_servers')
+  const originalView = rec.ctx.tools.view
+  rec.ctx.tools.view = () => {
+    throw new Error('registry offline')
+  }
+  const result = await list.execute({})
+  rec.ctx.tools.view = originalView
+  assert.deepEqual(result.servers, [])
+  assert.match(result.message, /tool catalog unavailable: registry offline/)
+  // The failure path renders the message instead of a list.
+  const blocks = list.output.render({}, result)
+  assert.equal(blocks.length, 1)
+  assert.match(blocks[0].text, /tool catalog unavailable/)
+})

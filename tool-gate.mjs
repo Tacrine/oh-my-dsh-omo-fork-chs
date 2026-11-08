@@ -235,6 +235,65 @@ export function apply(ctx, config) {
         }
       },
     })
+
+    ctx.tools.register({
+      name: 'list_mcp_servers',
+      description: 'List the configured MCP servers with their connection status and whether their tools are currently enabled. Call this when the user asks to load an MCP server, then enable the one they pick.',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {},
+        required: [],
+      },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            servers: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                properties: {
+                  server: { type: 'string' },
+                  connected: { type: 'boolean' },
+                  toolCount: { type: 'number' },
+                  enabled: { type: 'boolean' },
+                },
+                required: ['server', 'connected', 'toolCount', 'enabled'],
+              },
+            },
+            message: { type: 'string' },
+          },
+          required: ['servers'],
+        },
+        render: (_args, value) => [
+          { type: 'text', text: value.message ?? JSON.stringify(value.servers) },
+        ],
+      },
+      async execute() {
+        let known
+        try {
+          known = ctx.tools.view(undefined).restrictableNames
+        } catch (error) {
+          return { servers: [], message: `tool catalog unavailable: ${error.message}` }
+        }
+        const names = [...known]
+        const servers = serverNames.map((server) => {
+          const prefix = `mcp__${server}__`
+          const toolCount = names.filter((toolName) => toolName.startsWith(prefix)).length
+          const state = states[prefix]
+          return {
+            server,
+            connected: toolCount > 0,
+            toolCount,
+            enabled: state !== undefined && state.active,
+          }
+        })
+        return { servers }
+      },
+    })
   }
 
   ctx.on('tools/change', sync)
