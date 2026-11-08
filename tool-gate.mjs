@@ -278,6 +278,8 @@ export function apply(ctx) {
         let applied = null
         let inside = false
         let alive = true
+        /** Whether the unreadable-inventory warning was already reported. */
+        let warnedEmpty = false
 
         const maskOnce = () => {
           if (!alive) return
@@ -292,15 +294,13 @@ export function apply(ctx) {
           const usable = usableServers(discovered, readWorkspaceConfig(entry.cwd))
           const entitled = new Set([...entry.enabled].filter((server) => usable.includes(server)))
           const deny = []
-          if (discovered.length === 0) {
+          const empty = discovered.length === 0
+          if (empty) {
             // Fail closed. An empty inventory means the loader could not be read,
             // not that this deployment has no MCP servers; reading it as "nothing
             // to hide" would expose every `mcp__` tool, the exact opposite of the
             // gate's contract. Mask whatever the registry can still see.
             deny.push(...names.filter((toolName) => toolName.startsWith(MCP_PREFIX)))
-            if (deny.length > 0) {
-              warn('tool-gate: no MCP servers discovered from the loader; masking every mcp__ tool')
-            }
           } else {
             for (const server of discovered) {
               if (entitled.has(server)) continue
@@ -309,6 +309,17 @@ export function apply(ctx) {
           }
           const signature = deny.slice().sort().join('\u0000')
           if (signature === applied) return
+          // Report the unreadable inventory once per agent, and only on a real
+          // state change: an inventory that stays empty would otherwise re-log on
+          // every `tools/change`, and the mask it implies is unchanged anyway.
+          if (empty && deny.length > 0) {
+            if (!warnedEmpty) {
+              warnedEmpty = true
+              warn('tool-gate: no MCP servers discovered from the loader; masking every mcp__ tool')
+            }
+          } else {
+            warnedEmpty = false
+          }
           // Undo first: an empty mask means "apply nothing", never "keep the
           // previous one", otherwise the last enable could never take effect.
           if (undo !== undefined) {
@@ -598,7 +609,9 @@ export function apply(ctx) {
     // restriction its plugin applied, so only its disposal lifts that mask.
     for (const [id, entry] of [...agents.entries()]) {
       try {
-        entry.fiber?.dispose?.()
+        // `dispose()` may return a promise, and a rejection would slip past this
+        // catch to become an unhandled rejection while the host is tearing down.
+        entry.fiber?.dispose?.()?.catch?.(() => {})
       } catch (error) {
         warn(`tool-gate: disposing the mask for agent ${id} failed: ${error?.message ?? String(error)}`)
       }
