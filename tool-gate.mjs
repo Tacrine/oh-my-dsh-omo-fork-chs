@@ -1,33 +1,43 @@
 /**
- * Tool gate for the `tri-agent` agent preset.
+ * Tool gate for the `tri-agent` agent preset — workspace-scoped MCP lazy loading.
  *
- * The deployment mounts five MCP servers process-wide, so every preset inherits
- * their whole tool catalog whether or not it wants it. For this preset that
- * catalog is dead weight: it costs schema tokens on every request and pulls the
- * model toward tools the preset never routes work to. The deployment cannot
- * switch them off per preset — a context-global restriction would mask the
- * tools for every agent — so this plugin applies the mask from inside the
- * preset's own agent scope, the only place `tools.restrict()` accepts.
+ * The deployment can register any number of MCP servers through
+ * `@deepseek-ai/dsh-mcp-client` loader entries. Every preset inherits their whole
+ * tool catalog whether or not it wants it, which costs schema tokens on every
+ * request. This plugin keeps all of them masked by default and lets the model
+ * lift the mask for one server at a time, per session.
  *
- * `restrict()` matches exact global names only; it throws on anything it cannot
- * resolve. Configuration therefore carries prefixes (`mcp__<server>__`), and
- * this plugin expands them against the live registry on every change instead of
- * baking a name list that would rot the moment a server adds or drops a tool.
+ * Two things make the design non-obvious:
  *
- * Both `restrict()` and the disposer it returns emit `tools/change`
- * synchronously, and this plugin subscribes to that same event — hence the
- * re-entry guard. Without it the first application would recurse forever.
+ * 1. The MCP inventory comes from the loader entry list, not from the tool
+ *    registry. A server that is configured but not connected publishes no tools,
+ *    and a server whose tool names happen to share a prefix with another server
+ *    would be mis-attributed; reading `@deepseek-ai/dsh-mcp-client` entries and
+ *    their `config.serverName` is the only faithful source.
  *
- * The gate also exposes two meta tools, `enable_mcp` and `disable_mcp`, so the
- * model can toggle one server's tools within a session. `enable_mcp` marks the
- * server active and lifts its mask (its tools show from the next step);
- * `disable_mcp` re-applies an exact-name restriction for that server on top of
- * the base mask. The base mask deliberately skips prefixes whose server is
- * currently active, so the next reconcile does not undo an enable. The meta
- * tool names themselves never match `mcp__`, so the base mask cannot hide them.
+ * 2. The mask has to be applied per agent, not from this plugin's own context.
+ *    A preset is mounted once under a standing scope and every session joins by
+ *    scope parentage, so a restriction applied here would be shared by all
+ *    sessions of the preset. The plugin therefore mounts a small child plugin on
+ *    each agent's own scope and applies `tools.restrict()` there.
+ *
+ * Which servers a workspace may use is workspace-local: `<session cwd>/.dsh/
+ * mcp-servers.json` carries `allow` and `deny` lists. A missing file, or an
+ * empty `allow`, means no MCP server is available at all — the deny list alone
+ * never grants anything.
+ *
+ * `restrict()` matches exact global names only and throws on anything it cannot
+ * resolve, so every mask is expanded against the agent scope's live
+ * `restrictableNames` right before it is applied. Both `restrict()` and the
+ * disposer it returns emit `tools/change` synchronously, and the controller
+ * subscribes to that same event, hence the re-entry guards.
  *
  * @module tool-gate
  */
+
+import { readFileSync, statSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 /** Cordis plugin name. */
 export const name = 'tool-gate'
@@ -35,281 +45,521 @@ export const name = 'tool-gate'
 /** The gate reads and rewrites the tool registry of its own agent scope. */
 export const inject = ['tools']
 
+/** The loader plugin name that publishes MCP servers. */
+const MCP_PLUGIN = '@deepseek-ai/dsh-mcp-client'
+
+/** `serverName` shape the MCP client accepts. */
+const NAME_RE = /^[A-Za-z0-9_-]{1,32}$/
+
+/** Public tool-name prefix of one MCP server. */
+const MCP_PREFIX = 'mcp__'
+
+/** Workspace-local configuration file, relative to the session cwd. */
+const CONFIG_RELATIVE = join('.dsh', 'mcp-servers.json')
+
+/** Prefix the panel gives to an MCP entry id it created. */
+const MANAGED_ID_PREFIX = 'panel-mcp-'
+
+/** Config cache entry: parsed allow/deny plus the mtime they were read at. */
+const configCache = new Map()
+
 /**
- * Expand one configured entry into the exact global tool names it covers.
+ * Read one MCP entry's server name from its id when `config.serverName` is
+ * missing, matching the panel's own fallback (`panel-mcp-<name>` → `<name>`).
  *
- * An entry is either a full tool name or a name prefix; a name that matches
- * neither drops out silently, which is what lets a preset mount before its MCP
- * servers have published anything.
- *
- * @param known - every restrictable global tool name, pre-restriction.
- * @param prefix - the configured name or name prefix.
- * @returns the matching tool names, in registry order.
+ * @param id - the loader entry id, when present.
+ * @returns the derived server name, or undefined.
  */
-function expand(known, prefix) {
-  const matched = []
-  for (const toolName of known) {
-    if (toolName === prefix || toolName.startsWith(prefix)) matched.push(toolName)
-  }
-  return matched
+function serverNameFromEntryId(id) {
+  if (typeof id !== 'string' || !id.startsWith(MANAGED_ID_PREFIX)) return undefined
+  return id.slice(MANAGED_ID_PREFIX.length)
 }
 
 /**
- * Mask the configured tool prefixes for this preset's agents, and register the
- * `enable_mcp` / `disable_mcp` meta tools when `serverNames` is configured.
+ * Scan one patch file for MCP entry `serverName` values, without a YAML parser.
  *
- * An absent or empty `deny` is a no-op rather than an empty mask: `restrict({})`
- * throws, and a preset that lists nothing means "keep everything".
+ * The scan is deliberately dumb: it looks for a `name:` line holding the MCP
+ * client plugin name and then for the first `serverName:` line inside that
+ * entry's block. That covers the shapes the panel and hand editing produce.
+ *
+ * @param path - absolute path of a `cordis.patch.yml`.
+ * @returns every server name found, deduplicated.
+ */
+function discoverFromPatchFile(path) {
+  let raw
+  try {
+    raw = readFileSync(path, 'utf8')
+  } catch {
+    return []
+  }
+  const found = new Set()
+  const lines = raw.split(/\r?\n/)
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (line === undefined || !/^\s*-?\s*name:/.test(line)) continue
+    const value = line.slice(line.indexOf('name:') + 5).trim().replace(/^['"]|['"]$/g, '')
+    if (value !== MCP_PLUGIN) continue
+    const indent = line.length - line.trimStart().length
+    for (let inner = index + 1; inner < lines.length; inner += 1) {
+      const next = lines[inner] ?? ''
+      const nextIndent = next.length - next.trimStart().length
+      if (next.trim() !== '' && nextIndent <= indent - 1) break
+      const match = /^\s*serverName:\s*(.+?)\s*$/.exec(next)
+      if (match === null) continue
+      const serverName = match[1].replace(/^['"]|['"]$/g, '')
+      if (NAME_RE.test(serverName)) found.add(serverName)
+      break
+    }
+  }
+  return [...found]
+}
+
+/**
+ * Resolve the MCP inventory from the loader, falling back to the profile patch.
+ *
+ * @param ctx - the plugin context; `get('loader')` is looked up on it.
+ * @returns every configured MCP server name.
+ */
+function discoverServers(ctx) {
+  const found = new Set()
+  const loader = typeof ctx.get === 'function' ? ctx.get('loader') : undefined
+  if (loader !== undefined && typeof loader.entries === 'function') {
+    for (const entry of loader.entries()) {
+      const options = entry?.options
+      if (options?.name !== MCP_PLUGIN) continue
+      if (options?.disabled === true) continue
+      const configured = options?.config?.serverName
+      const serverName = typeof configured === 'string' && configured !== ''
+        ? configured
+        : serverNameFromEntryId(options?.id)
+      if (typeof serverName === 'string' && NAME_RE.test(serverName)) found.add(serverName)
+    }
+    return [...found]
+  }
+  // Best effort only: `ctx.baseUrl` is whatever the mounting realm set, which is
+  // not necessarily the profile directory. Every candidate that reads cleanly
+  // contributes, and a complete miss yields an empty inventory (never a crash).
+  const base = ctx.baseUrl
+  if (typeof base === 'string' && base.startsWith('file:')) {
+    let directory
+    try {
+      directory = dirname(fileURLToPath(base))
+    } catch {
+      return []
+    }
+    for (const candidate of [
+      join(directory, 'cordis.patch.yml'),
+      join(directory, '..', '..', 'cordis.patch.yml'),
+    ]) {
+      for (const serverName of discoverFromPatchFile(candidate)) found.add(serverName)
+    }
+  }
+  return [...found]
+}
+
+/**
+ * Read one workspace's `allow`/`deny` lists, cached by cwd and file mtime.
+ *
+ * @param cwd - the session working directory, when the session has one.
+ * @returns the workspace policy; both lists are empty when unreadable.
+ */
+function readWorkspaceConfig(cwd) {
+  const empty = { allow: [], deny: [] }
+  if (typeof cwd !== 'string' || cwd === '') return empty
+  const path = join(cwd, CONFIG_RELATIVE)
+  let mtime
+  try {
+    mtime = statSync(path).mtimeMs
+  } catch {
+    configCache.delete(cwd)
+    return empty
+  }
+  const cached = configCache.get(cwd)
+  if (cached !== undefined && cached.mtime === mtime) return cached.policy
+  let policy = empty
+  try {
+    const parsed = JSON.parse(readFileSync(path, 'utf8'))
+    const list = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [])
+    policy = { allow: list(parsed?.allow), deny: list(parsed?.deny) }
+  } catch {
+    policy = empty
+  }
+  configCache.set(cwd, { mtime, policy })
+  return policy
+}
+
+/**
+ * The servers this workspace may use: configured ∩ allow − deny.
+ *
+ * An empty `allow` list means nothing is available; the deny list only ever
+ * removes.
+ *
+ * @param discovered - every configured MCP server name.
+ * @param policy - the workspace's allow/deny lists.
+ * @returns the usable server names.
+ */
+function usableServers(discovered, policy) {
+  const allowed = new Set(policy.allow)
+  const denied = new Set(policy.deny)
+  return discovered.filter((server) => allowed.has(server) && !denied.has(server))
+}
+
+/**
+ * Expand one server into the exact global tool names currently in the agent
+ * scope's restrictable set.
+ *
+ * @param known - the agent scope's pre-restriction tool names.
+ * @param server - the MCP server name.
+ * @returns the matching tool names, in registry order.
+ */
+function toolNamesOf(known, server) {
+  const prefix = `${MCP_PREFIX}${server}__`
+  return known.filter((toolName) => toolName.startsWith(prefix))
+}
+
+/**
+ * Mount the per-agent mask plugin and register the three model-facing tools.
  *
  * @param ctx - the preset's agent scope context.
- * @param config - optional `deny` list of tool names or name prefixes, and an
- *   optional `serverNames` list that enables the meta tools.
  */
-export function apply(ctx, config) {
-  const denyList = config?.deny ?? []
-  const serverNames = config?.serverNames ?? []
-  if (denyList.length === 0 && serverNames.length === 0) return
-
-  /** Per-server mask state, keyed by the `mcp__<server>__` prefix. */
-  const states = Object.fromEntries(serverNames.map((server) => [
-    `mcp__${server}__`,
-    { undo: undefined, active: false },
-  ]))
-
-  /** Disposer of the base restriction currently in force, if any. */
-  let undo
-  /** Signature of the set last applied; `null` means nothing is applied now. */
-  let applied = null
-  /** Cleared when the host recycles this plugin fiber, to stop re-applying. */
+export function apply(ctx) {
+  /** agentId → { holder, enabled, cwd } */
+  const agents = new Map()
+  const mounted = new Set()
+  const mounting = new Set()
+  let syncing = false
   let live = true
-  /** Re-entry guard: applying and lifting a restriction both emit `tools/change`. */
-  let inside = false
+
+  const warn = (message) => {
+    try {
+      ctx.logger?.warn?.(message)
+    } catch {
+      // A minimal host has no logger; the gate stays silent.
+    }
+  }
 
   /**
-   * Reconcile the base mask with the registry's current contents, skipping any
-   * server whose tools `enable_mcp` has made visible.
+   * Build one agent's mask state holder. The returned plugin is mounted on that
+   * agent's own scope, so its restriction is invisible to every other session.
+   *
+   * @param entry - the agent's bookkeeping record.
+   * @returns the plugin and the holder the controller drives.
    */
-  const syncOnce = () => {
-    let known
-    try {
-      known = new Set(ctx.tools.view(undefined).restrictableNames)
-    } catch {
-      // The registry refused a view: nothing to reconcile against this round.
+  function pluginFor(entry) {
+    const holder = { sync: () => {} }
+    const plugin = {
+      name: 'tool-gate:agent-mask',
+      inject: ['tools'],
+      apply(child) {
+        let undo
+        let applied = null
+        let inside = false
+        let alive = true
+
+        const maskOnce = () => {
+          if (!alive) return
+          let known
+          try {
+            known = child.tools.view(undefined).restrictableNames
+          } catch {
+            return
+          }
+          const names = [...known]
+          const discovered = discoverServers(ctx)
+          const usable = usableServers(discovered, readWorkspaceConfig(entry.cwd))
+          const entitled = new Set([...entry.enabled].filter((server) => usable.includes(server)))
+          const deny = []
+          for (const server of discovered) {
+            if (entitled.has(server)) continue
+            deny.push(...toolNamesOf(names, server))
+          }
+          const signature = deny.slice().sort().join('\u0000')
+          if (signature === applied) return
+          // Undo first: an empty mask means "apply nothing", never "keep the
+          // previous one", otherwise the last enable could never take effect.
+          if (undo !== undefined) {
+            try {
+              undo()
+            } catch {
+              // A disposer that already ran needs no second report.
+            }
+            undo = undefined
+            applied = null
+          }
+          if (deny.length === 0) {
+            applied = ''
+            return
+          }
+          try {
+            undo = child.tools.restrict({ deny })
+            applied = signature
+          } catch (error) {
+            warn(`tool-gate: applying the MCP mask failed: ${error?.message ?? String(error)}`)
+            undo = undefined
+            applied = null
+          }
+        }
+
+        const sync = () => {
+          if (!alive || inside) return
+          inside = true
+          try {
+            maskOnce()
+          } finally {
+            inside = false
+          }
+        }
+
+        holder.sync = sync
+        try {
+          child.effect(() => () => {
+            alive = false
+            holder.sync = () => {}
+          })
+        } catch {
+          // Minimal host without `effect`: stop being driven at teardown anyway.
+          alive = false
+          holder.sync = () => {}
+        }
+        sync()
+      },
+    }
+    return { plugin, holder }
+  }
+
+  /**
+   * Mount the mask for one agent, once.
+   *
+   * @param agent - the live agent whose scope receives the mask.
+   */
+  function attach(agent) {
+    const id = typeof agent?.id === 'string' ? agent.id : undefined
+    if (id === undefined || mounted.has(id) || mounting.has(id)) return
+    const scope = agent.ctx
+    if (scope === undefined || typeof scope.plugin !== 'function') {
+      warn(`tool-gate: agent ${id} exposes no scoped context; leaving its MCP tools visible`)
       return
     }
-
-    const activePrefixes = new Set(
-      Object.entries(states).filter(([, state]) => state.active).map(([prefix]) => prefix),
-    )
-    const usable = [...new Set(
-      denyList
-        .filter((prefix) => ![...activePrefixes].some((active) => prefix.startsWith(active)))
-        .flatMap((prefix) => expand(known, prefix)),
-    )]
-    const signature = usable.slice().sort().join('\u0000')
-    // An unchanged set needs no work: undo + view + restrict per event is the
-    // difference between idle and a busy loop once tools are registered often.
-    if (signature === applied) return
-
-    if (undo !== undefined) {
-      try {
-        undo()
-      } catch {
-        // A disposer that already ran is not an error worth failing the mount.
+    mounting.add(id)
+    try {
+      const entry = {
+        holder: { sync: () => {} },
+        enabled: new Set(),
+        cwd: agent.session?.meta?.cwd,
       }
-      undo = undefined
-      applied = null
-    }
-
-    if (usable.length === 0) {
-      // Nothing matched yet: record the empty set so the next identical round
-      // is a no-op, and leave the registry untouched.
-      applied = ''
-      return
-    }
-
-    try {
-      undo = ctx.tools.restrict({ deny: usable })
-      applied = signature
-    } catch {
-      // A name disappeared between the view and the call; the next change retries.
-      undo = undefined
-      applied = null
+      const { plugin, holder } = pluginFor(entry)
+      entry.holder = holder
+      scope.plugin(plugin)
+      agents.set(id, entry)
+      mounted.add(id)
+    } catch (error) {
+      warn(`tool-gate: mounting the mask for agent ${id} failed: ${error?.message ?? String(error)}`)
+    } finally {
+      mounting.delete(id)
     }
   }
 
   /**
-   * Reconcile once, unless this call is the echo of our own `restrict()`.
+   * Re-derive every mounted agent's mask, unless a reconcile is already running.
+   * `restrict()` and its disposer emit `tools/change` synchronously, and this is
+   * the listener for that event, so the flag is what stops the recursion.
    */
-  const sync = () => {
-    if (!live || inside) return
-    inside = true
+  function syncAll() {
+    if (!live || syncing) return
+    syncing = true
     try {
-      syncOnce()
+      for (const entry of agents.values()) {
+        try {
+          entry.holder.sync()
+        } catch (error) {
+          warn(`tool-gate: re-deriving a mask failed: ${error?.message ?? String(error)}`)
+        }
+      }
     } finally {
-      inside = false
+      syncing = false
     }
   }
 
-  if (serverNames.length > 0) {
-    const serverParameter = {
-      type: 'string',
-      enum: serverNames,
-      description: 'MCP server name',
-    }
-    const textOutput = {
+  /**
+   * Resolve the calling agent's record, refreshing both the workspace policy and
+   * the loader inventory first: a plain tool call is the only moment a
+   * hand-edited configuration file becomes visible.
+   *
+   * @param exec - the tool run context carrying the calling agent.
+   * @returns the agent's record.
+   */
+  function entryOf(exec, toolName) {
+    const agent = exec?.agent
+    if (agent === undefined) throw new Error(`no agent context: ${toolName} needs a session`)
+    attach(agent)
+    const entry = agents.get(agent.id)
+    if (entry === undefined) throw new Error(`no agent context: ${toolName} needs a session`)
+    entry.cwd = agent.session?.meta?.cwd
+    entry.holder.sync()
+    return entry
+  }
+
+  /** The model-facing inventory: usable servers in this workspace, with state. */
+  ctx.tools.register({
+    name: 'list_mcp_servers',
+    description:
+      'List the MCP servers this workspace allows, with their connection state and whether their tools are currently enabled. Call this when the user asks to load an MCP server, then enable the one they pick.',
+    parameters: { type: 'object', additionalProperties: false, properties: {}, required: [] },
+    output: {
       schema: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          message: { type: 'string', description: 'What happened' },
-        },
-        required: ['message'],
-      },
-      render: (_args, value) => [{ type: 'text', text: value.message }],
-    }
-
-    ctx.tools.register({
-      name: 'enable_mcp',
-      description: 'Enable MCP tools for a server in the next step. Call this when you need tools from a server that is currently disabled.',
-      parameters: {
-        type: 'object',
-        additionalProperties: false,
-        properties: { server: serverParameter },
-        required: ['server'],
-      },
-      output: textOutput,
-      async execute(args) {
-        const prefix = `mcp__${args.server}__`
-        const state = states[prefix]
-        if (state === undefined) throw new Error(`unknown server: ${args.server}`)
-        if (state.active) return { message: `tools from ${args.server} are already enabled` }
-        // Mark active first so the tools/change echo of the undo (and the
-        // reconcile below) excludes this server from the base mask.
-        state.active = true
-        if (state.undo !== undefined) {
-          try {
-            state.undo()
-          } catch {
-            // A disposer that already ran needs no second report.
-          }
-          state.undo = undefined
-        }
-        // The base mask may still cover this server (no server-level undo was
-        // held); reconcile now so the tools show from the next step.
-        sync()
-        return { message: `enabled tools from ${args.server}; they will appear in the next step` }
-      },
-    })
-
-    ctx.tools.register({
-      name: 'disable_mcp',
-      description: 'Disable MCP tools for a server. Call this to hide those tools and save token overhead.',
-      parameters: {
-        type: 'object',
-        additionalProperties: false,
-        properties: { server: serverParameter },
-        required: ['server'],
-      },
-      output: textOutput,
-      async execute(args) {
-        const prefix = `mcp__${args.server}__`
-        const state = states[prefix]
-        if (state === undefined) throw new Error(`unknown server: ${args.server}`)
-        let known
-        try {
-          known = new Set(ctx.tools.view(undefined).restrictableNames)
-        } catch {
-          return { message: 'failed to read tool catalog' }
-        }
-        const usable = [...known].filter((toolName) => toolName.startsWith(prefix))
-        if (usable.length === 0) {
-          return { message: `no tools from ${args.server} to disable (server may not be connected)` }
-        }
-        try {
-          state.undo = ctx.tools.restrict({ deny: usable })
-          state.active = false
-          return { message: `disabled ${usable.length} tools from ${args.server}` }
-        } catch (error) {
-          return { message: `failed to disable: ${error.message}` }
-        }
-      },
-    })
-
-    ctx.tools.register({
-      name: 'list_mcp_servers',
-      description: 'List the configured MCP servers with their connection status and whether their tools are currently enabled. Call this when the user asks to load an MCP server, then enable the one they pick.',
-      parameters: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {},
-        required: [],
-      },
-      output: {
-        schema: {
-          type: 'object',
-          additionalProperties: false,
-          properties: {
-            servers: {
-              type: 'array',
-              items: {
-                type: 'object',
-                additionalProperties: false,
-                properties: {
-                  server: { type: 'string' },
-                  connected: { type: 'boolean' },
-                  toolCount: { type: 'number' },
-                  enabled: { type: 'boolean' },
-                },
-                required: ['server', 'connected', 'toolCount', 'enabled'],
+          servers: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                server: { type: 'string' },
+                connected: { type: 'boolean' },
+                toolCount: { type: 'number' },
+                enabled: { type: 'boolean' },
               },
+              required: ['server', 'connected', 'toolCount', 'enabled'],
             },
-            message: { type: 'string' },
           },
-          required: ['servers'],
+          message: { type: 'string' },
         },
-        render: (_args, value) => [
-          { type: 'text', text: value.message ?? JSON.stringify(value.servers) },
-        ],
+        required: ['servers'],
       },
-      async execute() {
-        let known
-        try {
-          known = ctx.tools.view(undefined).restrictableNames
-        } catch (error) {
-          return { servers: [], message: `tool catalog unavailable: ${error.message}` }
+      render: (_args, value) => [
+        { type: 'text', text: value.message ?? JSON.stringify(value.servers) },
+      ],
+    },
+    async execute(_args, exec) {
+      const agent = exec?.agent
+      if (agent === undefined) throw new Error('no agent context: list_mcp_servers needs a session')
+      attach(agent)
+      const entry = agents.get(agent.id)
+      const cwd = agent.session?.meta?.cwd
+      const discovered = discoverServers(ctx)
+      const usable = usableServers(discovered, readWorkspaceConfig(cwd))
+      if (usable.length === 0) {
+        return {
+          servers: [],
+          message: 'no MCP servers allowed in this workspace; add .dsh/mcp-servers.json',
         }
-        const names = [...known]
-        const servers = serverNames.map((server) => {
-          const prefix = `mcp__${server}__`
-          const toolCount = names.filter((toolName) => toolName.startsWith(prefix)).length
-          const state = states[prefix]
-          return {
-            server,
-            connected: toolCount > 0,
-            toolCount,
-            enabled: state !== undefined && state.active,
-          }
-        })
-        return { servers }
-      },
-    })
+      }
+      let known = []
+      try {
+        known = [...agent.ctx.tools.view(undefined).restrictableNames]
+      } catch {
+        known = []
+      }
+      const servers = usable.map((server) => {
+        const toolCount = toolNamesOf(known, server).length
+        return {
+          server,
+          connected: toolCount > 0,
+          toolCount,
+          enabled: entry?.enabled.has(server) === true,
+        }
+      })
+      return { servers }
+    },
+  })
+
+  /** Shared shape for the two toggles. */
+  const toggleOutput = {
+    schema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { message: { type: 'string' } },
+      required: ['message'],
+    },
+    render: (_args, value) => [{ type: 'text', text: value.message }],
   }
 
-  ctx.on('tools/change', sync)
+  ctx.tools.register({
+    name: 'enable_mcp',
+    description:
+      'Enable the MCP tools of one server for this session. The tools appear from the next step. Only servers this workspace allows can be enabled.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { server: { type: 'string', description: 'MCP server name' } },
+      required: ['server'],
+    },
+    output: toggleOutput,
+    async execute(args, exec) {
+      const server = String(args?.server ?? '')
+      const entry = entryOf(exec, 'enable_mcp')
+      const discovered = discoverServers(ctx)
+      if (!discovered.includes(server)) throw new Error(`unknown server: ${server}`)
+      const policy = readWorkspaceConfig(entry.cwd)
+      if (!policy.allow.includes(server)) throw new Error(`not allowed in this workspace: ${server}`)
+      if (policy.deny.includes(server)) throw new Error(`denied by workspace config: ${server}`)
+      if (entry.enabled.has(server)) return { message: `tools from ${server} are already enabled` }
+      entry.enabled.add(server)
+      entry.holder.sync()
+      let toolCount = 0
+      try {
+        toolCount = toolNamesOf([...exec.agent.ctx.tools.view(undefined).restrictableNames], server).length
+      } catch {
+        toolCount = 0
+      }
+      if (toolCount === 0) {
+        return { message: `server ${server} is configured but not connected; it will appear once it connects` }
+      }
+      return { message: `enabled ${toolCount} tools from ${server}; they will appear in the next step` }
+    },
+  })
+
+  ctx.tools.register({
+    name: 'disable_mcp',
+    description:
+      'Disable the MCP tools of one server for this session, hiding them again from the next step.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { server: { type: 'string', description: 'MCP server name' } },
+      required: ['server'],
+    },
+    output: toggleOutput,
+    async execute(args, exec) {
+      const server = String(args?.server ?? '')
+      const entry = entryOf(exec, 'disable_mcp')
+      const discovered = discoverServers(ctx)
+      if (!discovered.includes(server)) throw new Error(`unknown server: ${server}`)
+      if (!entry.enabled.has(server)) return { message: `tools from ${server} are already disabled` }
+      entry.enabled.delete(server)
+      entry.holder.sync()
+      return { message: `disabled the tools of ${server}; they will disappear in the next step` }
+    },
+  })
+
+  ctx.on('agent/created', (payload) => {
+    const agent = payload?.agent
+    if (agent !== undefined) attach(agent)
+  })
+
+  ctx.on('agent/disposed', (payload) => {
+    const id = typeof payload?.agent?.id === 'string' ? payload.agent.id : payload?.agent
+    if (typeof id !== 'string') return
+    agents.delete(id)
+    mounted.delete(id)
+  })
+
+  ctx.on('tools/change', syncAll)
 
   ctx.effect(() => () => {
     live = false
-    if (undo === undefined) return
-    try {
-      undo()
-    } catch {
-      // Fiber teardown: a disposer that already ran needs no second report.
-    }
-    undo = undefined
-  }, 'tool-gate: restricted tool cleanup')
+    agents.clear()
+    mounted.clear()
+  }, 'tool-gate: per-agent mask cleanup')
 
-  // The registry is already populated when a preset mounts late; a subscription
-  // alone would leave the first catalog untouched.
-  sync()
+  // A preset can mount after agents already exist; a subscription alone would
+  // leave those sessions unmasked.
+  const existing = typeof ctx.get === 'function' ? ctx.get('agents') : undefined
+  if (existing !== undefined && typeof existing.list === 'function') {
+    for (const agent of existing.list()) attach(agent)
+  } else if (existing !== undefined && typeof existing.values === 'function') {
+    for (const agent of existing.values()) attach(agent)
+  }
 }

@@ -111,19 +111,6 @@
 
           - id: tool-gate
             name: '@local/dsh-preset-omo-fork-chs/tool-gate'
-            config:
-              deny:
-                - mcp__EIDE__
-                - mcp__tavily-proxy__
-                - mcp__codebase-memory-mcp__
-                - mcp__cubemx__
-                - mcp__cortex-debug-mcp__
-              serverNames:
-                - EIDE
-                - tavily-proxy
-                - codebase-memory-mcp
-                - cubemx
-                - cortex-debug-mcp
           # ── goals ───────────────────────────────────────────────────────────────────
 
           # The goal service and session driver stay on the host plane, where the Gateway

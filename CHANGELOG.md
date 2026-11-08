@@ -6,23 +6,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0] — 2026-11-08
 
-**What this release is for.** The omo-fork preset now gates out the five MCP servers the
-deployment mounts process-wide, so the preset's agents no longer carry their whole tool
-catalog as schema weight on every request.
+**What this release is for.** The omo-fork preset now keeps MCP servers masked until a
+workspace asks for them, so a session no longer carries every mounted server's tool catalog
+as schema weight on every request — and which servers a workspace may use is decided in that
+workspace, not in this package.
 
 ### Added
 
-- **`tool-gate`** — a module mounted inside the preset's agent scope that expands five
-  configured MCP server-name prefixes (`mcp__EIDE__`, `mcp__tavily-proxy__`,
-  `mcp__codebase-memory-mcp__`, `mcp__cubemx__`, `mcp__cortex-debug-mcp__`) against the
-  live tool registry on every `tools/change` event and restricts those tools out of the
-  catalog. A re-entry guard, a signature check and an empty-deny no-op keep it stable while
-  the restriction's own events echo back through the same channel.
-- **`test/tool-gate.test.mjs`** — drives `apply()` through a recording context and asserts
-  the export shape, the prefix expansion, the empty-deny no-op and the re-entry guard.
+- **`tool-gate`** — a module mounted inside the preset's plugin list that discovers the MCP
+  inventory from `@deepseek-ai/dsh-mcp-client` loader entries (`config.serverName`, falling
+  back to the `panel-mcp-<name>` id shape, `disabled: true` skipped) and keeps their tools
+  masked by default. The mask is applied on **each agent's own scope** through a child
+  plugin, not from the preset's standing scope, so one session's choice cannot leak into
+  another's.
+- **Workspace policy from `<cwd>/.dsh/mcp-servers.json`** — `allow` and `deny` lists, deny
+  wins, and a missing file or an empty `allow` makes zero MCP servers available. A server
+  that is configured but not connected still appears with `connected: false`.
+- **`list_mcp_servers` / `enable_mcp` / `disable_mcp`** — the model-side half of the gate.
+  Enabling a server exposes its tools from the next step; a hand edit to the config file is
+  picked up on the next meta-tool call.
+- **`test/tool-gate.test.mjs`** — drives discovery, the workspace policy, the per-agent mask
+  and the three meta tools through recording contexts.
 
 ### Changed
 
+- **The plugin row no longer carries a `config` block.** The gate reads the workspace's
+  `mcp-servers.json` and the loader's own entries, so the patch row is `- id:` and `name:`
+  only. The repository and baseline patches are 952 lines, the bundle's is 876.
 - **The baseline, the patch and the port tooling now count thirteen pre-port package-name
   occurrences and thirteen rewrite sites.** The new plugin row is the third non-persona
   package-name site, after the self-reference and the header comment.
