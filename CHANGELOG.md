@@ -4,6 +4,59 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-11-08
+
+**What this release is for.** The omo-fork preset now keeps MCP servers masked until a
+workspace asks for them, so a session no longer carries every mounted server's tool catalog
+as schema weight on every request — and which servers a workspace may use is decided in that
+workspace, not in this package.
+
+### Added
+
+- **`tool-gate`** — a module mounted inside the preset's plugin list that discovers the MCP
+  inventory from `@deepseek-ai/dsh-mcp-client` loader entries (`config.serverName`, falling
+  back to the `panel-mcp-<name>` id shape, `disabled: true` skipped) and keeps their tools
+  masked by default. The mask is applied on **each agent's own scope** through a child
+  plugin, not from the preset's standing scope, so one session's choice cannot leak into
+  another's.
+- **Workspace policy from `<cwd>/.dsh/mcp-servers.json`** — `allow` and `deny` lists. `deny`
+  **only overrides when the same server is listed in both lists**; a server that sits in
+  `deny` alone is "configured but not yet authorized" and `enable_mcp` lifts it into `allow`
+  (a permanent grant that survives restarts and reconciles). A hard block has to be written
+  into **both** `allow` and `deny`. A missing file, or an empty `allow` with no `deny` entry
+  to lift, makes zero MCP servers available. A server that is configured but not connected
+  still appears with `connected: false`.
+- **The workspace config is created and maintained automatically.** The first `agent/created`
+  for a working directory writes `<cwd>/.dsh/mcp-servers.json` when it is missing, denying
+  every discovered server; a server added to the deployment later is appended to `deny` on
+  the next reconcile. A hand-written file is never overwritten (unknown keys like `$comment`
+  survive), and an unreadable one is logged and left alone.
+- **`enable_mcp` / `disable_mcp` write through to the config.** Enabling moves the server from
+  `deny` to `allow` on disk, disabling moves it back, so the choice is durable and a later
+  reconcile cannot undo it. Enabling a server exposes its tools from the next step; a hand
+  edit to the config file is picked up on the next meta-tool call.
+- **`list_mcp_servers` names the candidates.** When the workspace authorizes nothing yet but
+  servers are discovered, the tool lists them as `enable_mcp` arguments instead of pointing
+  at a config file that already exists.
+- **The execution presets are gated too.** `preset-omo-sisyphus-junior`, `preset-omo-hephaestus`
+  and `preset-omo-sisyphus` now mount `tool-gate`, so subagent sessions inherit the same
+  default-masked MCP behavior as the main preset.
+- **`test/tool-gate.test.mjs`** — drives discovery, the workspace policy, the per-agent mask,
+  the three meta tools and the auto-config write-through through recording contexts.
+- **`skills/mcp-lazy-load/SKILL.md` bundled and auto-registered** — the skill ships in the
+  package's `skills/` directory and is registered via `tool-gate.mjs`'s new `registerSkill()`
+  export at plugin startup. `mcp-lazy-load` appears in the host skill catalog as soon as one
+  of the four tool-gate presets is active.
+
+### Changed
+
+- **The plugin row no longer carries a `config` block.** The gate reads the workspace's
+  `mcp-servers.json` and the loader's own entries, so the patch row is `- id:` and `name:`
+  only. The repository and baseline patches are 952 lines, the bundle's is 876.
+- **The baseline, the patch and the port tooling now count thirteen pre-port package-name
+  occurrences and thirteen rewrite sites.** The new plugin row is the third non-persona
+  package-name site, after the self-reference and the header comment.
+
 ## [Unreleased]
 
 **What this is for.** `A5` checks that `files[]` *contains* every entry in `REQUIRED_FILES`, but no
@@ -405,7 +458,8 @@ SUL-1.0 is not an SPDX identifier and this package is dual-licensed. `files[]` s
   repositories with separate packages, preset ids and scope mappings, and neither affects the other.
 - A missing or empty persona file fails the mount by design, naming the file in the error.
 
-[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.3.0
 [0.2.3]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.3
 [0.2.0]: https://github.com/Tacrine/oh-my-dsh-omo-fork-chs/releases/tag/v0.2.0

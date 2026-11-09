@@ -12,12 +12,12 @@ that this fork vendors from. It was captured by reversing the three port rewrite
 and applies the inverse of the rules in `tools/lib/rewrites.mjs`.
 
 - Source: the repository's own `cordis.patch.yml` (the published agentPreset form)
-- Source byte count: 42784
-- Source line count: 950
-- Source SHA256: `248602D919D92F1514371EDC8AAE985E5F4A0243B9435BAE5663B298FE8D0836`
+- Source byte count: 43168
+- Source line count: 958
+- Source SHA256: `B910E691FDAD40B273FBEBF07924F735161C6886305377ACDC6F6D5CB84D34DC`
 
-The baseline file in this directory is the **pre-port** form: 41875 bytes, 950 lines,
-SHA256 `E4DF52290D0770A12C5E854822B21BB7D64BD176DE753F5A8706780F991CEAD7`. It differs from the
+The baseline file in this directory is the **pre-port** form: 42247 bytes, 958 lines,
+SHA256 `D23CB9303F2D08C5D191E5163B3D4DA74A33B17C7EBF03EA2CB7D280C7B4272C`. It differs from the
 source because the three port rewrites transform the package reference and persona-file paths.
 Re-applying those rewrites (`node tools/port-patch.mjs --src baseline`) reproduces the published
 patch byte for byte, which is what the verification chain proves.

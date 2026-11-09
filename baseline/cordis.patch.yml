@@ -109,6 +109,8 @@
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
 
+          - id: tool-gate
+            name: '@local/dsh-preset-omo-fork-chs/tool-gate'
           # ── goals ───────────────────────────────────────────────────────────────────
 
           # The goal service and session driver stay on the host plane, where the Gateway
@@ -764,6 +766,8 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+              - id: tool-gate
+                name: '@local/dsh-preset-omo-fork-chs/tool-gate'
 
 - insert:
     - id: preset-omo-hephaestus
@@ -833,6 +837,8 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+              - id: tool-gate
+                name: '@local/dsh-preset-omo-fork-chs/tool-gate'
 
 - insert:
     - id: preset-omo-sisyphus
@@ -902,6 +908,8 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+              - id: tool-gate
+                name: '@local/dsh-preset-omo-fork-chs/tool-gate'
 
 - insert:
     - id: preset-omo-multimodal-looker

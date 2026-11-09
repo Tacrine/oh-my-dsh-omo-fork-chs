@@ -1,6 +1,6 @@
 {
   "name": "@tacrine_f/oh-my-dsh-omo-fork-chs",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": false,
   "description": "The unofficial Simplified Chinese fork of the tri-agent agent preset (Atlas orchestration plus Prometheus planning), packaged for DeepSeek Harness as a Cordis bundle; the vendored upstream content is licensed under SUL-1.0.",
   "type": "module",
@@ -9,6 +9,7 @@
     ".": "./index.js",
     "./persona": "./plan-aware-persona.mjs",
     "./caveman": "./caveman-autoload.mjs",
+    "./tool-gate": "./tool-gate.mjs",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -16,6 +17,7 @@
     "plan-aware-persona.mjs",
     "index.js",
     "caveman-autoload.mjs",
+    "tool-gate.mjs",
     "personas/",
     "skills/",
     "cordis.patch.yml",

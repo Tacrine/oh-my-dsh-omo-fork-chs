@@ -260,13 +260,13 @@ export function baselineProblems(text, counts) {
   const occurrences = (needle) => text.split(needle).length - 1
   if (counts.name !== 1) problems.push(`expected exactly one self-reference row to invert, inverted ${counts.name}`)
   if (counts.persona !== 9) problems.push(`expected exactly 9 persona anchors to invert, inverted ${counts.persona}`)
-  if (counts.comment !== 2) problems.push(`expected exactly two pre-port package-name occurrences outside the self-reference and the persona anchors, one of them the header comment; inverted ${counts.comment}`)
+  if (counts.comment !== 6) problems.push(`expected exactly six pre-port package-name occurrences outside the self-reference and the persona anchors (the header comment, the caveman module and the four tool-gate rows), inverted ${counts.comment}`)
   const selfReference = `name: '${LOCAL_PACKAGE}/persona'`
   if (occurrences(selfReference) !== 1) problems.push(`expected exactly one "${selfReference}" row, found ${occurrences(selfReference)}`)
   if (occurrences(`'./node_modules/${LOCAL_PACKAGE}/personas/`) !== 9) {
     problems.push(`expected 9 pre-port persona anchors, found ${occurrences(`'./node_modules/${LOCAL_PACKAGE}/personas/`)}`)
   }
-  if (occurrences(LOCAL_PACKAGE) !== 12) problems.push(`expected 12 "${LOCAL_PACKAGE}" occurrences in total, found ${occurrences(LOCAL_PACKAGE)}`)
+  if (occurrences(LOCAL_PACKAGE) !== 16) problems.push(`expected 16 "${LOCAL_PACKAGE}" occurrences in total, found ${occurrences(LOCAL_PACKAGE)}`)
   return problems
 }
 
@@ -288,7 +288,7 @@ export function productProblems(text, packageName, counts) {
   if (occurrences("personas', '") !== 9) problems.push(`expected 9 rewritten persona anchors, found ${occurrences("personas', '")}`)
   if (counts.name !== 1) problems.push(`expected exactly one self-reference row to rewrite, rewrote ${counts.name}`)
   if (counts.persona !== 9) problems.push(`expected exactly 9 persona anchors to rewrite, rewrote ${counts.persona}`)
-  if (counts.comment !== 2) problems.push(`expected exactly two pre-port package-name occurrences outside the self-reference and the persona anchors, one of them the header comment; rewrote ${counts.comment}`)
+  if (counts.comment !== 6) problems.push(`expected exactly six pre-port package-name occurrences outside the self-reference and the persona anchors (the header comment, the caveman module and the four tool-gate rows), rewrote ${counts.comment}`)
   return problems
 }
 

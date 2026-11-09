@@ -54,10 +54,22 @@ The changes made to the upstream content, relative to upstream commit
    any other. The paths are not reproduced here because this document is itself covered by
    that scan.
 
-No upstream licensing, copyright, or other notice was altered, removed, or obscured by
-these modifications. The persona documents and the two copied modules contain no license or
-copyright notice of their own, so no notice was removed from them and none was added to
-them, which keeps them byte-comparable with their source.
+9. **A tool gate makes MCP servers opt-in, per workspace, inside the omo-fork preset.** The
+   bundle mounts a new `tool-gate` module (this repository's own work, MIT-licensed) in the
+   preset's plugin list, where a per-agent scope is available. The gate reads the MCP
+   inventory from the bundle's `@deepseek-ai/dsh-mcp-client` loader entries — each entry's
+   `config.serverName`, falling back to the entry id when that key is absent, and skipping
+   `disabled: true` entries — and keeps every one of their tools masked by default. Which
+   servers a workspace may use is workspace-local: `<cwd>/.dsh/mcp-servers.json` carries
+   `allow` and `deny` lists, `deny` wins, and a missing file or an empty `allow` means no
+   MCP server is available at all. The model lifts the mask one server at a time through
+   the `list_mcp_servers`, `enable_mcp` and `disable_mcp` tools; an enable takes effect from
+   the next step, and a hand edit to the config file is picked up on the next such tool
+   call. A server that is configured but not connected is still listed, with
+   `connected: false`. The mask is applied per agent rather than from the plugin's own
+   context, because a preset is mounted once and shared by every session. The re-entry
+   guard, signature deduplication and per-agent child mount follow the same pattern as
+   `dsh-skill-mcp-panel`'s `tool-filter` (MIT-licensed); the concept is reused, not the code.
 
 ## Attribution
 
@@ -101,6 +113,7 @@ test/
 baseline/README.md
 package.json
 caveman-autoload.mjs
+tool-gate.mjs
 skills/
 .gitignore
 .gitattributes
