@@ -53,14 +53,32 @@ function minimalPatch() {
     `            name: '${LOCAL_PACKAGE}/caveman'`,
     `          - id: tool-gate`,
     `            name: '${LOCAL_PACKAGE}/tool-gate'`,
+    `- insert:`,
+    `    - id: preset-omo-sisyphus-junior`,
+    `      config:`,
+    `        plugins:`,
+    `          - id: tool-gate`,
+    `            name: '${LOCAL_PACKAGE}/tool-gate'`,
+    `- insert:`,
+    `    - id: preset-omo-hephaestus`,
+    `      config:`,
+    `        plugins:`,
+    `          - id: tool-gate`,
+    `            name: '${LOCAL_PACKAGE}/tool-gate'`,
+    `- insert:`,
+    `    - id: preset-omo-sisyphus`,
+    `      config:`,
+    `        plugins:`,
+    `          - id: tool-gate`,
+    `            name: '${LOCAL_PACKAGE}/tool-gate'`,
     '',
   ].join('\n')
 }
 
-test('the three rewrite groups count exactly 1 / 9 / 3', () => {
+test('the three rewrite groups count exactly 1 / 9 / 6', () => {
   const result = applyRewrites(minimalPatch(), PACKAGE)
-  assert.deepEqual(result.counts, { name: 1, persona: 9, comment: 3 })
-  assert.equal(result.sites.length, 13, 'the three groups touch thirteen sites in total')
+  assert.deepEqual(result.counts, { name: 1, persona: 9, comment: 6 })
+  assert.equal(result.sites.length, 16, 'the three groups touch sixteen sites in total')
 })
 
 test('the persona anchors are rewritten in source order', () => {

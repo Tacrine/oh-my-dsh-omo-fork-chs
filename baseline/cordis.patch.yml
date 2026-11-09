@@ -766,6 +766,8 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+              - id: tool-gate
+                name: '@local/dsh-preset-omo-fork-chs/tool-gate'
 
 - insert:
     - id: preset-omo-hephaestus
@@ -835,6 +837,8 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+              - id: tool-gate
+                name: '@local/dsh-preset-omo-fork-chs/tool-gate'
 
 - insert:
     - id: preset-omo-sisyphus
@@ -904,6 +908,8 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+              - id: tool-gate
+                name: '@local/dsh-preset-omo-fork-chs/tool-gate'
 
 - insert:
     - id: preset-omo-multimodal-looker

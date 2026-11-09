@@ -53,14 +53,32 @@ function minimalPatch() {
     `            name: '${LOCAL_PACKAGE}/caveman'`,
     `          - id: tool-gate`,
     `            name: '${LOCAL_PACKAGE}/tool-gate'`,
+    `- insert:`,
+    `    - id: preset-omo-sisyphus-junior`,
+    `      config:`,
+    `        plugins:`,
+    `          - id: tool-gate`,
+    `            name: '${LOCAL_PACKAGE}/tool-gate'`,
+    `- insert:`,
+    `    - id: preset-omo-hephaestus`,
+    `      config:`,
+    `        plugins:`,
+    `          - id: tool-gate`,
+    `            name: '${LOCAL_PACKAGE}/tool-gate'`,
+    `- insert:`,
+    `    - id: preset-omo-sisyphus`,
+    `      config:`,
+    `        plugins:`,
+    `          - id: tool-gate`,
+    `            name: '${LOCAL_PACKAGE}/tool-gate'`,
     '',
   ].join('\n')
 }
 
-test('the inverse rewrite groups count exactly 1 / 9 / 3', () => {
+test('the inverse rewrite groups count exactly 1 / 9 / 6', () => {
   const ported = applyRewrites(minimalPatch(), PACKAGE)
   const inverse = applyInverseRewrites(ported.text, PACKAGE)
-  assert.deepEqual(inverse.counts, { name: 1, persona: 9, comment: 3 })
+  assert.deepEqual(inverse.counts, { name: 1, persona: 9, comment: 6 })
 })
 
 test('forward then inverse returns the original text exactly', () => {
@@ -84,10 +102,10 @@ test('the derived baseline satisfies the baseline invariants', () => {
   assert.deepEqual(baselineProblems(inverse.text, inverse.counts), [])
 })
 
-test('the derived baseline carries thirteen pre-port occurrences', () => {
+test('the derived baseline carries sixteen pre-port occurrences', () => {
   const ported = applyRewrites(minimalPatch(), PACKAGE)
   const inverse = applyInverseRewrites(ported.text, PACKAGE)
-  assert.equal(inverse.text.split(LOCAL_PACKAGE).length - 1, 13)
+  assert.equal(inverse.text.split(LOCAL_PACKAGE).length - 1, 16)
   assert.equal(inverse.text.split(`'./node_modules/${LOCAL_PACKAGE}/personas/`).length - 1, 9)
   assert.equal(inverse.text.split(`name: '${LOCAL_PACKAGE}/persona'`).length - 1, 1)
 })

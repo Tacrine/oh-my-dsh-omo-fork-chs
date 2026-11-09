@@ -35,7 +35,7 @@
  * @module tool-gate
  */
 
-import { readFileSync, statSync } from 'node:fs'
+import { readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -256,6 +256,123 @@ function sessionCwd(agent) {
 }
 
 /**
+ * Absolute path of one workspace's local MCP config file.
+ *
+ * @param cwd - the session working directory.
+ * @returns the full path, or an empty string when cwd is unset.
+ */
+function configFilePath(cwd) {
+  return typeof cwd === 'string' && cwd !== '' ? join(cwd, '.dsh', 'mcp-servers.json') : ''
+}
+
+/**
+ * Write one workspace's MCP allow/deny config, refresh the config cache, and
+ * create the `.dsh` directory when it does not exist yet.
+ *
+ * @param cwd - the session working directory.
+ * @param config - the allow/deny pairs to persist.
+ * @param warn - the plugin's logger function.
+ */
+function writeConfig(cwd, config, warn) {
+  if (typeof cwd !== 'string' || cwd === '') return
+  const path = configFilePath(cwd)
+  try {
+    mkdirSync(join(cwd, '.dsh'), { recursive: true })
+    writeFileSync(path, JSON.stringify({ allow: config.allow, deny: config.deny }, null, 2) + '\n', 'utf8')
+  } catch (error) {
+    warn(`tool-gate: writing the workspace MCP config for ${cwd} failed: ${error?.message ?? String(error)}`)
+    return
+  }
+  try {
+    configCache.set(cwd, { mtime: statSync(path).mtimeMs, policy: { allow: config.allow.slice(), deny: config.deny.slice() } })
+  } catch {
+    configCache.delete(cwd)
+  }
+}
+
+/**
+ * Ensure the workspace's MCP config exists and the deny list covers every
+ * discovered server. Does **not** overwrite an existing file or an unreadable
+ * one; only appends newly-discovered servers that are not yet in either
+ * `allow` or `deny`.
+ *
+ * A server already in `allow` must never be moved back to `deny`: that would
+ * undo a prior `enable_mcp` on the next reconcile.
+ *
+ * @param cwd - the session working directory.
+ * @param discovered - every configured MCP server name from the loader.
+ * @param warn - the plugin's logger function.
+ */
+function ensureConfig(cwd, discovered, warn) {
+  if (typeof cwd !== 'string' || cwd === '' || discovered.length === 0) return
+  const path = configFilePath(cwd)
+  let exists = true
+  try { statSync(path) } catch { exists = false }
+  if (!exists) {
+    writeConfig(cwd, { allow: [], deny: [...discovered] }, warn)
+    warn(`tool-gate: created workspace MCP config for ${cwd} with ${discovered.length} server(s) denied by default`)
+    return
+  }
+  let parsed
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'))
+  } catch (error) {
+    warn(`tool-gate: workspace MCP config for ${cwd} is unreadable; leaving it alone — ${error?.message ?? String(error)}`)
+    return
+  }
+  const list = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [])
+  const config = { allow: list(parsed?.allow), deny: list(parsed?.deny) }
+  let changed = false
+  const added = []
+  for (const server of discovered) {
+    if (config.deny.includes(server)) continue
+    if (config.allow.includes(server)) continue
+    config.deny.push(server)
+    added.push(server)
+    changed = true
+  }
+  if (changed) {
+    writeConfig(cwd, config, warn)
+    warn(`tool-gate: added ${added.length} new MCP server(s) to the workspace config's deny list for ${cwd}: ${added.join(', ')}`)
+  }
+}
+
+/**
+ * Persist an `enable_mcp` decision: move one server from the workspace deny
+ * list to the allow list, then write the config file. Called before the
+ * in-memory `enabled` set changes, so a failed write leaves nothing half-done.
+ *
+ * @param cwd - the session working directory.
+ * @param server - the MCP server name being enabled.
+ * @param warn - the plugin's logger function.
+ */
+function persistEnable(cwd, server, warn) {
+  if (typeof cwd !== 'string' || cwd === '') return
+  const policy = readWorkspaceConfig(cwd)
+  const allow = policy.allow.filter((candidate) => candidate !== server)
+  const deny = policy.deny.filter((candidate) => candidate !== server)
+  allow.push(server)
+  writeConfig(cwd, { allow, deny }, warn)
+}
+
+/**
+ * Persist a `disable_mcp` decision: move one server from the workspace allow
+ * list to the deny list, then write the config file.
+ *
+ * @param cwd - the session working directory.
+ * @param server - the MCP server name being disabled.
+ * @param warn - the plugin's logger function.
+ */
+function persistDisable(cwd, server, warn) {
+  if (typeof cwd !== 'string' || cwd === '') return
+  const policy = readWorkspaceConfig(cwd)
+  const allow = policy.allow.filter((candidate) => candidate !== server)
+  const deny = policy.deny.filter((candidate) => candidate !== server)
+  deny.push(server)
+  writeConfig(cwd, { allow, deny }, warn)
+}
+
+/**
  * Mount the per-agent mask plugin and register the three model-facing tools.
  *
  * @param ctx - the preset's agent scope context.
@@ -306,6 +423,10 @@ export function apply(ctx) {
           }
           const names = [...known]
           const discovered = discoverServers(ctx)
+          // Reconcile the workspace config as well: new servers need to be
+          // added to the deny list so they are masked until the model enables
+          // them.
+          if (entry.cwd) ensureConfig(entry.cwd, discovered, warn)
           const usable = usableServers(discovered, readWorkspaceConfig(entry.cwd))
           const entitled = new Set([...entry.enabled].filter((server) => usable.includes(server)))
           const deny = []
@@ -418,6 +539,8 @@ export function apply(ctx) {
       entry.fiber = scope.plugin(plugin)
       agents.set(id, entry)
       mounted.add(id)
+      // Auto-create and auto-maintain the workspace MCP config.
+      if (entry.cwd) ensureConfig(entry.cwd, discoverServers(ctx), warn)
     } catch (error) {
       warn(`tool-gate: mounting the mask for agent ${id} failed: ${error?.message ?? String(error)}`)
     } finally {
@@ -562,9 +685,22 @@ export function apply(ctx) {
       const entry = entryOf(exec, 'enable_mcp')
       const discovered = discoverServers(ctx)
       if (!discovered.includes(server)) throw new Error(`unknown server: ${server}`)
+      // Persist first: move the server from deny to allow in the workspace
+      // config so the next reconcile cannot undo this enable.
       const policy = readWorkspaceConfig(entry.cwd)
-      if (!policy.allow.includes(server)) throw new Error(`not allowed in this workspace: ${server}`)
-      if (policy.deny.includes(server)) throw new Error(`denied by workspace config: ${server}`)
+      const inAllow = policy.allow.includes(server)
+      const inDeny = policy.deny.includes(server)
+      // Four cases, and the differences matter:
+      //   allow ∩ deny    -> an explicit human denial, which wins over this tool
+      //   allow ∖ deny    -> already authorized, nothing to persist
+      //   deny ∖ allow    -> the auto-maintained default mask this tool exists to lift
+      //   neither         -> this workspace never authorized the server
+      if (inAllow && inDeny) throw new Error(`denied by workspace config: ${server}`)
+      if (!inAllow && !inDeny) throw new Error(`not allowed in this workspace: ${server}`)
+      if (!inAllow) persistEnable(entry.cwd, server, warn)
+      const granted = readWorkspaceConfig(entry.cwd)
+      if (!granted.allow.includes(server)) throw new Error(`not allowed in this workspace: ${server}`)
+      if (granted.deny.includes(server)) throw new Error(`denied by workspace config: ${server}`)
       if (entry.enabled.has(server)) return { message: `tools from ${server} are already enabled` }
       entry.enabled.add(server)
       entry.holder.sync()
@@ -597,6 +733,9 @@ export function apply(ctx) {
       const entry = entryOf(exec, 'disable_mcp')
       const discovered = discoverServers(ctx)
       if (!discovered.includes(server)) throw new Error(`unknown server: ${server}`)
+      // Persist first: move the server from allow to deny in the workspace
+      // config so the next reconcile keeps it masked.
+      persistDisable(entry.cwd, server, warn)
       if (!entry.enabled.has(server)) return { message: `tools from ${server} are already disabled` }
       entry.enabled.delete(server)
       entry.holder.sync()

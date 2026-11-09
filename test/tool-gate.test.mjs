@@ -21,7 +21,7 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -354,6 +354,66 @@ test('a configured but disconnected server still reports and can be enabled', as
     agent.ctx.tools.view = () => ({ restrictableNames: [...registry, 'mcp__codebase-memory-mcp__search_graph'] })
     emit('tools/change', [])
     assert.ok(!activeMask(agent).includes('mcp__codebase-memory-mcp__search_graph'))
+  } finally {
+    space.remove()
+  }
+})
+
+test('a workspace without a config file gets one created on agent creation', async () => {
+  const mod = await import(MODULE_URL)
+  const { host, emit, makeAgent } = fakeHost({
+    entries: loaderEntries(['codebase-memory-mcp', 'other']),
+    registryNames: REGISTRY_NAMES,
+  })
+  mod.apply(host)
+  // No policy argument: the workspace starts with no `.dsh/mcp-servers.json`.
+  const space = workspace()
+  try {
+    const agent = makeAgent('agent-1', space.path)
+    emit('agent/created', { agent })
+    const config = JSON.parse(readFileSync(join(space.path, '.dsh', 'mcp-servers.json'), 'utf8'))
+    assert.deepEqual(config.allow, [], 'a fresh config authorizes nothing')
+    assert.deepEqual(
+      [...config.deny].sort(),
+      ['codebase-memory-mcp', 'other'],
+      'a fresh config denies every discovered server',
+    )
+  } finally {
+    space.remove()
+  }
+})
+
+test('enable writes through to the config and a reconcile does not undo it', async () => {
+  const mod = await import(MODULE_URL)
+  const { host, registered, emit, makeAgent } = fakeHost({
+    entries: loaderEntries(['codebase-memory-mcp', 'other']),
+    registryNames: REGISTRY_NAMES,
+  })
+  mod.apply(host)
+  // The auto-created config starts with everything denied, so this enable has
+  // to lift a denial rather than confirm a pre-existing authorization.
+  const space = workspace()
+  const configPath = join(space.path, '.dsh', 'mcp-servers.json')
+  try {
+    const agent = makeAgent('agent-1', space.path)
+    emit('agent/created', { agent })
+    assert.deepEqual(JSON.parse(readFileSync(configPath, 'utf8')).allow, [])
+
+    await registered.get('enable_mcp').execute({ server: 'codebase-memory-mcp' }, { agent })
+    const afterEnable = JSON.parse(readFileSync(configPath, 'utf8'))
+    assert.ok(afterEnable.allow.includes('codebase-memory-mcp'), 'enable must be written into allow')
+    assert.ok(!afterEnable.deny.includes('codebase-memory-mcp'), 'enable must leave deny')
+    assert.ok(afterEnable.deny.includes('other'), 'the other server stays denied')
+
+    // A later reconcile must not put it back: the auto-maintain loop has to
+    // skip servers that already sit in `allow`.
+    emit('tools/change', [])
+    emit('tools/change', [])
+    assert.deepEqual(
+      JSON.parse(readFileSync(configPath, 'utf8')),
+      afterEnable,
+      'a reconcile must not undo an enable',
+    )
   } finally {
     space.remove()
   }
