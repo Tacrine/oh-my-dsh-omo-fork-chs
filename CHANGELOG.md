@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] — 2026-11-09
+
+### Fixed
+
+- **Registered skills now carry the `source` field, so they can be loaded.** Both
+  `caveman-autoload.mjs` (the `caveman-ultra` skill) and `tool-gate.mjs` (the bundled
+  `mcp-lazy-load` skill) called `ctx.skills.register({ name, description, content })` without
+  a `source`. The registry accepts that shape and lists the entry in the catalog, but the
+  load path validates `source` as a string and throws
+  `loaded skill "<name>" source must be a string`. The symptom was a skill that always appeared
+  in the catalog and could never be loaded — in particular the caveman skill that is supposed
+  to load automatically. Both registrations now pass `source: 'bundled'`, matching the four
+  official providers that register skills (`dsh-skill-badge`, `dsh-skill-office`,
+  `dsh-creation-recommendations`, `dsh-plugin-recommendations`).
+- **Two assertions cover the missing field.** `test/caveman-loader.test.mjs` and
+  `test/tool-gate.test.mjs` now assert that the object handed to `skills.register` carries a
+  non-empty `source`, and removing it turns each assertion red.
+
 ## [0.4.0] — 2026-11-08
 
 **What this release is for.** The omo-fork preset now keeps MCP servers masked until a

@@ -124,7 +124,7 @@ export function apply(ctx) {
   const description = readDescription(content)
 
   ctx.effect(
-    () => ctx.skills.register({ name: SKILL_NAME, description, content }),
+    () => ctx.skills.register({ name: SKILL_NAME, description, content, source: 'bundled' }),
     'caveman-autoload: skill',
   )
 

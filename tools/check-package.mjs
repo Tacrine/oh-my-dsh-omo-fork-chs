@@ -70,7 +70,7 @@ import { pathToFileURL } from 'node:url'
 /** The package identity this repository is expected to publish under. */
 const EXPECTED = {
   name: '@tacrine_f/oh-my-dsh-omo-fork-chs',
-  version: '0.4.0',
+  version: '0.4.1',
   license: 'SEE LICENSE IN NOTICE.md',
 }
 
@@ -1006,7 +1006,7 @@ function main() {
   const GATED_MODULES = [
     ['index.js', 'A32DF6CA6466FF522C972932A84A5D1AA43E212B0CD2B1E0E29DD4ACF4908F44'],
     ['plan-aware-persona.mjs', '52F4E3A60DFB09B5F52D284239AD533A6E7693CEBA3EA97F5F8AB9A75B444AB3'],
-    ['caveman-autoload.mjs', '4206EE3E432E31FD75AD54F17E4459918CAA84272B832B79B50AED3AE4810C81'],
+    ['caveman-autoload.mjs', 'B23B0835C854BF5D4FC1417B68E4543C89389C059D313B8A7E39E1D040EFE51C'],
   ]
   const gatedHashes = []
   for (const [moduleName, expectedHash] of GATED_MODULES) {
