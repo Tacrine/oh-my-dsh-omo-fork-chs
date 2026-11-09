@@ -269,24 +269,63 @@ function configFilePath(cwd) {
  * Write one workspace's MCP allow/deny config, refresh the config cache, and
  * create the `.dsh` directory when it does not exist yet.
  *
+ * Keys other than `allow`/`deny` on the original file (a `$comment`, a `version`
+ * marker, whatever the user chose to add) are carried over through `config.extra`
+ * so a write-through never silently drops user-owned fields.
+ *
  * @param cwd - the session working directory.
- * @param config - the allow/deny pairs to persist.
+ * @param config - `{ extra?, allow, deny }` to persist.
  * @param warn - the plugin's logger function.
+ * @returns whether the write succeeded.
  */
 function writeConfig(cwd, config, warn) {
-  if (typeof cwd !== 'string' || cwd === '') return
+  if (typeof cwd !== 'string' || cwd === '') return false
   const path = configFilePath(cwd)
   try {
     mkdirSync(join(cwd, '.dsh'), { recursive: true })
-    writeFileSync(path, JSON.stringify({ allow: config.allow, deny: config.deny }, null, 2) + '\n', 'utf8')
+    writeFileSync(
+      path,
+      JSON.stringify({ ...(config.extra ?? {}), allow: config.allow, deny: config.deny }, null, 2) + '\n',
+      'utf8',
+    )
   } catch (error) {
     warn(`tool-gate: writing the workspace MCP config for ${cwd} failed: ${error?.message ?? String(error)}`)
-    return
+    return false
   }
   try {
     configCache.set(cwd, { mtime: statSync(path).mtimeMs, policy: { allow: config.allow.slice(), deny: config.deny.slice() } })
   } catch {
     configCache.delete(cwd)
+  }
+  return true
+}
+
+/**
+ * The user-owned keys of a parsed config, i.e. everything except `allow` and
+ * `deny`. Non-object input carries nothing over.
+ *
+ * @param parsed - the parsed config file, or null/array/undefined.
+ * @returns the keys to preserve on the next write.
+ */
+function extraOf(parsed) {
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
+  const { allow: _allow, deny: _deny, ...rest } = parsed
+  return rest
+}
+
+/**
+ * Read one workspace's config file without touching the cache.
+ *
+ * @param cwd - the session working directory.
+ * @returns the parsed object, or null when unreadable.
+ */
+function readRawConfig(cwd) {
+  if (typeof cwd !== 'string' || cwd === '') return null
+  const path = configFilePath(cwd)
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch {
+    return null
   }
 }
 
@@ -309,8 +348,12 @@ function ensureConfig(cwd, discovered, warn) {
   let exists = true
   try { statSync(path) } catch { exists = false }
   if (!exists) {
-    writeConfig(cwd, { allow: [], deny: [...discovered] }, warn)
-    warn(`tool-gate: created workspace MCP config for ${cwd} with ${discovered.length} server(s) denied by default`)
+    // The creation warning belongs inside the success branch: a failed write
+    // already logs its own "writing ... failed" line and must not also claim
+    // to have created the file.
+    if (writeConfig(cwd, { allow: [], deny: [...discovered] }, warn)) {
+      warn(`tool-gate: created workspace MCP config for ${cwd} with ${discovered.length} server(s) denied by default`)
+    }
     return
   }
   let parsed
@@ -321,7 +364,7 @@ function ensureConfig(cwd, discovered, warn) {
     return
   }
   const list = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [])
-  const config = { allow: list(parsed?.allow), deny: list(parsed?.deny) }
+  const config = { extra: extraOf(parsed), allow: list(parsed?.allow), deny: list(parsed?.deny) }
   let changed = false
   const added = []
   for (const server of discovered) {
@@ -332,8 +375,9 @@ function ensureConfig(cwd, discovered, warn) {
     changed = true
   }
   if (changed) {
-    writeConfig(cwd, config, warn)
-    warn(`tool-gate: added ${added.length} new MCP server(s) to the workspace config's deny list for ${cwd}: ${added.join(', ')}`)
+    if (writeConfig(cwd, config, warn)) {
+      warn(`tool-gate: added ${added.length} new MCP server(s) to the workspace config's deny list for ${cwd}: ${added.join(', ')}`)
+    }
   }
 }
 
@@ -348,11 +392,13 @@ function ensureConfig(cwd, discovered, warn) {
  */
 function persistEnable(cwd, server, warn) {
   if (typeof cwd !== 'string' || cwd === '') return
-  const policy = readWorkspaceConfig(cwd)
-  const allow = policy.allow.filter((candidate) => candidate !== server)
-  const deny = policy.deny.filter((candidate) => candidate !== server)
+  const raw = readRawConfig(cwd)
+  const policy = raw ?? { allow: [], deny: [] }
+  const list = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [])
+  const allow = list(policy.allow).filter((candidate) => candidate !== server)
+  const deny = list(policy.deny).filter((candidate) => candidate !== server)
   allow.push(server)
-  writeConfig(cwd, { allow, deny }, warn)
+  writeConfig(cwd, { extra: extraOf(raw), allow, deny }, warn)
 }
 
 /**
@@ -365,11 +411,13 @@ function persistEnable(cwd, server, warn) {
  */
 function persistDisable(cwd, server, warn) {
   if (typeof cwd !== 'string' || cwd === '') return
-  const policy = readWorkspaceConfig(cwd)
-  const allow = policy.allow.filter((candidate) => candidate !== server)
-  const deny = policy.deny.filter((candidate) => candidate !== server)
+  const raw = readRawConfig(cwd)
+  const policy = raw ?? { allow: [], deny: [] }
+  const list = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [])
+  const allow = list(policy.allow).filter((candidate) => candidate !== server)
+  const deny = list(policy.deny).filter((candidate) => candidate !== server)
   deny.push(server)
-  writeConfig(cwd, { allow, deny }, warn)
+  writeConfig(cwd, { extra: extraOf(raw), allow, deny }, warn)
 }
 
 /**
@@ -634,9 +682,20 @@ export function apply(ctx) {
       const discovered = discoverServers(ctx)
       const usable = usableServers(discovered, readWorkspaceConfig(cwd))
       if (usable.length === 0) {
+        // Auto-config creates `{allow:[],deny:[all]}` the moment the first
+        // agent appears, so an empty usable set is the normal "nothing
+        // authorized yet" state, not a missing file. Name the candidates so
+        // the model can call enable_mcp instead of guessing; the file only
+        // genuinely needs creating when nothing was discovered at all.
+        if (discovered.length === 0) {
+          return {
+            servers: [],
+            message: 'no MCP servers allowed in this workspace; add .dsh/mcp-servers.json',
+          }
+        }
         return {
           servers: [],
-          message: 'no MCP servers allowed in this workspace; add .dsh/mcp-servers.json',
+          message: `no MCP servers are enabled in this workspace yet; call enable_mcp with one of: ${discovered.join(', ')}`,
         }
       }
       let known = []

@@ -19,14 +19,30 @@ workspace, not in this package.
   masked by default. The mask is applied on **each agent's own scope** through a child
   plugin, not from the preset's standing scope, so one session's choice cannot leak into
   another's.
-- **Workspace policy from `<cwd>/.dsh/mcp-servers.json`** — `allow` and `deny` lists, deny
-  wins, and a missing file or an empty `allow` makes zero MCP servers available. A server
-  that is configured but not connected still appears with `connected: false`.
-- **`list_mcp_servers` / `enable_mcp` / `disable_mcp`** — the model-side half of the gate.
-  Enabling a server exposes its tools from the next step; a hand edit to the config file is
-  picked up on the next meta-tool call.
-- **`test/tool-gate.test.mjs`** — drives discovery, the workspace policy, the per-agent mask
-  and the three meta tools through recording contexts.
+- **Workspace policy from `<cwd>/.dsh/mcp-servers.json`** — `allow` and `deny` lists. `deny`
+  **only overrides when the same server is listed in both lists**; a server that sits in
+  `deny` alone is "configured but not yet authorized" and `enable_mcp` lifts it into `allow`
+  (a permanent grant that survives restarts and reconciles). A hard block has to be written
+  into **both** `allow` and `deny`. A missing file, or an empty `allow` with no `deny` entry
+  to lift, makes zero MCP servers available. A server that is configured but not connected
+  still appears with `connected: false`.
+- **The workspace config is created and maintained automatically.** The first `agent/created`
+  for a working directory writes `<cwd>/.dsh/mcp-servers.json` when it is missing, denying
+  every discovered server; a server added to the deployment later is appended to `deny` on
+  the next reconcile. A hand-written file is never overwritten (unknown keys like `$comment`
+  survive), and an unreadable one is logged and left alone.
+- **`enable_mcp` / `disable_mcp` write through to the config.** Enabling moves the server from
+  `deny` to `allow` on disk, disabling moves it back, so the choice is durable and a later
+  reconcile cannot undo it. Enabling a server exposes its tools from the next step; a hand
+  edit to the config file is picked up on the next meta-tool call.
+- **`list_mcp_servers` names the candidates.** When the workspace authorizes nothing yet but
+  servers are discovered, the tool lists them as `enable_mcp` arguments instead of pointing
+  at a config file that already exists.
+- **The execution presets are gated too.** `preset-omo-sisyphus-junior`, `preset-omo-hephaestus`
+  and `preset-omo-sisyphus` now mount `tool-gate`, so subagent sessions inherit the same
+  default-masked MCP behavior as the main preset.
+- **`test/tool-gate.test.mjs`** — drives discovery, the workspace policy, the per-agent mask,
+  the three meta tools and the auto-config write-through through recording contexts.
 
 ### Changed
 

@@ -197,7 +197,9 @@ test('the workspace deny list wins over the allow list', async () => {
 
 test('a workspace without a config file gets no servers at all', async () => {
   const mod = await import(MODULE_URL)
-  const { host, registered, makeAgent } = fakeHost()
+  // No discovered servers: there is genuinely nothing to authorize, so the
+  // guidance points at the config file rather than at enable_mcp candidates.
+  const { host, registered, makeAgent } = fakeHost({ entries: [] })
   mod.apply(host)
   const space = workspace()
   try {
@@ -205,6 +207,27 @@ test('a workspace without a config file gets no servers at all', async () => {
     const result = await registered.get('list_mcp_servers').execute({}, { agent })
     assert.deepEqual(result.servers, [])
     assert.equal(result.message, 'no MCP servers allowed in this workspace; add .dsh/mcp-servers.json')
+  } finally {
+    space.remove()
+  }
+})
+
+test('a workspace with nothing enabled yet names the enable candidates', async () => {
+  const mod = await import(MODULE_URL)
+  // Auto-config writes `{allow:[],deny:[all]}` on first attach, so a usable set
+  // of zero is the normal "nothing authorized yet" state; the tool must point
+  // the model at enable_mcp candidates instead of at a file that already exists.
+  const { host, registered, makeAgent } = fakeHost()
+  mod.apply(host)
+  const space = workspace()
+  try {
+    const agent = makeAgent('agent-1', space.path)
+    const result = await registered.get('list_mcp_servers').execute({}, { agent })
+    assert.deepEqual(result.servers, [])
+    assert.match(
+      String(result.message),
+      /no MCP servers are enabled in this workspace yet; call enable_mcp with one of: codebase-memory-mcp/,
+    )
   } finally {
     space.remove()
   }
@@ -414,6 +437,37 @@ test('enable writes through to the config and a reconcile does not undo it', asy
       afterEnable,
       'a reconcile must not undo an enable',
     )
+  } finally {
+    space.remove()
+  }
+})
+
+test('write-through preserves user-owned keys in the config file', async () => {
+  const mod = await import(MODULE_URL)
+  const { host, registered, emit, makeAgent } = fakeHost({
+    entries: loaderEntries(['codebase-memory-mcp']),
+    registryNames: REGISTRY_NAMES,
+  })
+  mod.apply(host)
+  const space = workspace({ $comment: 'managed by ops', version: 2, allow: [], deny: ['codebase-memory-mcp'] })
+  const configPath = join(space.path, '.dsh', 'mcp-servers.json')
+  try {
+    const agent = makeAgent('agent-1', space.path)
+    emit('agent/created', { agent })
+    // Enable rewrites the file; the extra keys must survive the write-through.
+    await registered.get('enable_mcp').execute({ server: 'codebase-memory-mcp' }, { agent })
+    const afterEnable = JSON.parse(readFileSync(configPath, 'utf8'))
+    assert.equal(afterEnable.$comment, 'managed by ops')
+    assert.equal(afterEnable.version, 2)
+    assert.ok(afterEnable.allow.includes('codebase-memory-mcp'))
+    assert.ok(!afterEnable.deny.includes('codebase-memory-mcp'))
+    // Disable rewrites again; the keys must still be there.
+    await registered.get('disable_mcp').execute({ server: 'codebase-memory-mcp' }, { agent })
+    const afterDisable = JSON.parse(readFileSync(configPath, 'utf8'))
+    assert.equal(afterDisable.$comment, 'managed by ops')
+    assert.equal(afterDisable.version, 2)
+    assert.ok(!afterDisable.allow.includes('codebase-memory-mcp'))
+    assert.ok(afterDisable.deny.includes('codebase-memory-mcp'))
   } finally {
     space.remove()
   }
