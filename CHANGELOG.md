@@ -43,6 +43,10 @@ workspace, not in this package.
   default-masked MCP behavior as the main preset.
 - **`test/tool-gate.test.mjs`** — drives discovery, the workspace policy, the per-agent mask,
   the three meta tools and the auto-config write-through through recording contexts.
+- **`skills/mcp-lazy-load/SKILL.md` bundled and auto-registered** — the skill ships in the
+  package's `skills/` directory and is registered via `tool-gate.mjs`'s new `registerSkill()`
+  export at plugin startup. `mcp-lazy-load` appears in the host skill catalog as soon as one
+  of the four tool-gate presets is active.
 
 ### Changed
 

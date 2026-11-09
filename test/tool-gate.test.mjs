@@ -84,6 +84,7 @@ function fakeHost({ entries = loaderEntries(), registryNames = REGISTRY_NAMES } 
     },
     logger: { warn: () => {} },
     tools: { register: (definition) => registered.set(definition.name, definition) },
+    inject: (deps, cb) => cb(host),
     on(event, handler) {
       handlers.set(event, handler)
       return () => {}
@@ -471,4 +472,27 @@ test('write-through preserves user-owned keys in the config file', async () => {
   } finally {
     space.remove()
   }
+})
+
+test('registerSkill does not throw when the host has no skills service', async () => {
+  const mod = await import(MODULE_URL)
+  const { host } = fakeHost()
+  // The fake host has no `skills` property, but its `inject` delivers `host`
+  // to `run`, which tries `scoped.skills.register` → TypeError → caught → warn.
+  assert.doesNotThrow(() => mod.apply(host))
+})
+
+test('registerSkill with a bad URL logs a warning instead of throwing', async () => {
+  const mod = await import(MODULE_URL)
+  const { host } = fakeHost()
+  const badUrl = new URL('file:///nonexistent')
+  assert.doesNotThrow(() => mod.registerSkill(host, badUrl))
+})
+
+test('registerSkill catches and swallows a skills.register rejection', async () => {
+  const mod = await import(MODULE_URL)
+  const { host } = fakeHost()
+  host.skills = { register: () => { throw new Error('mock reject') } }
+  const goodUrl = new URL('./skills/mcp-lazy-load/SKILL.md', import.meta.url)
+  assert.doesNotThrow(() => mod.registerSkill(host, goodUrl))
 })

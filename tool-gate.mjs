@@ -421,6 +421,39 @@ function persistDisable(cwd, server, warn) {
 }
 
 /**
+ * Register the `mcp-lazy-load` skill on the plugin context's skills service.
+ *
+ * Called from `apply()` with the module-relative SKILL.md path. The function
+ * has three independent try/catch fallbacks so that registration never breaks
+ * the gate itself — a missing file, a broken frontmatter, a unavailable skills
+ * service, or a `skills.register` that rejects are all logged and swallowed.
+ *
+ * @param ctx - the plugin context (may or may not have a skills service).
+ * @param url - an `import.meta.url`-resolved path to `SKILL.md`.
+ */
+export function registerSkill(ctx, url) {
+  const run = (scoped) => {
+    try {
+      const path = fileURLToPath(url)
+      const text = readFileSync(path, 'utf8')
+      const description = /^description:\s*(.+)$/m.exec(text)?.[1]?.trim()
+      if (!description) {
+        ctx.logger?.warn?.('mcp-lazy-load: missing description, skill not registered')
+        return
+      }
+      scoped.skills.register({ name: 'mcp-lazy-load', description, content: text })
+    } catch (error) {
+      ctx.logger?.warn?.(`mcp-lazy-load: skill registration skipped: ${error?.message ?? error}`)
+    }
+  }
+  if (typeof ctx.inject === 'function') {
+    try { ctx.inject(['skills'], run) } catch { run(ctx) }
+  } else {
+    run(ctx)
+  }
+}
+
+/**
  * Mount the per-agent mask plugin and register the three model-facing tools.
  *
  * @param ctx - the preset's agent scope context.
@@ -440,6 +473,9 @@ export function apply(ctx) {
       // A minimal host has no logger; the gate stays silent.
     }
   }
+
+  // Register the bundled skill. The function handles all failure modes itself.
+  registerSkill(ctx, new URL('./skills/mcp-lazy-load/SKILL.md', import.meta.url))
 
   /**
    * Build one agent's mask state holder. The returned plugin is mounted on that
