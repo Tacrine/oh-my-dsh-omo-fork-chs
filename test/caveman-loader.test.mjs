@@ -162,6 +162,7 @@ test('apply registers one skill whose description is the skill file’s own', ()
     0,
     'the shipped skill must name no slash command',
   )
+  assert.equal(skill.source, 'bundled', 'the registered skill must carry the source field')
 })
 
 test('the skill file’s own name matches the name it is registered under', () => {

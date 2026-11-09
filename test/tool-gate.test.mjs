@@ -493,6 +493,22 @@ test('registerSkill catches and swallows a skills.register rejection', async () 
   const mod = await import(MODULE_URL)
   const { host } = fakeHost()
   host.skills = { register: () => { throw new Error('mock reject') } }
-  const goodUrl = new URL('./skills/mcp-lazy-load/SKILL.md', import.meta.url)
+  // Resolve SKILL.md relative to the module's root, not the test dir.
+  const goodUrl = new URL('../skills/mcp-lazy-load/SKILL.md', import.meta.url)
   assert.doesNotThrow(() => mod.registerSkill(host, goodUrl))
+})
+
+test('registerSkill passes source:bundled to skills.register', async () => {
+  const mod = await import(MODULE_URL)
+  let registered = null
+  const { host } = fakeHost()
+  host.skills = { register: (skill) => { registered = skill } }
+  // The SKILL.md is one directory up from test/, i.e. skills/mcp-lazy-load/SKILL.md.
+  const goodUrl = new URL('../skills/mcp-lazy-load/SKILL.md', import.meta.url)
+  mod.registerSkill(host, goodUrl)
+  assert.ok(registered !== null, 'registerSkill must call skills.register')
+  assert.equal(registered.name, 'mcp-lazy-load')
+  assert.equal(registered.source, 'bundled', 'the registered skill must carry source')
+  assert.equal(typeof registered.description, 'string')
+  assert.equal(typeof registered.content, 'string')
 })

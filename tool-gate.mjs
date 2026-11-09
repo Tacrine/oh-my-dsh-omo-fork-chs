@@ -441,7 +441,7 @@ export function registerSkill(ctx, url) {
         ctx.logger?.warn?.('mcp-lazy-load: missing description, skill not registered')
         return
       }
-      scoped.skills.register({ name: 'mcp-lazy-load', description, content: text })
+      scoped.skills.register({ name: 'mcp-lazy-load', description, content: text, source: 'bundled' })
     } catch (error) {
       ctx.logger?.warn?.(`mcp-lazy-load: skill registration skipped: ${error?.message ?? error}`)
     }
