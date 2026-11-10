@@ -125,3 +125,16 @@ jobs:
         run: npm publish --access public --registry https://registry.npmjs.org/
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # 0.4.0 shipped two skills whose `skills.register(...)` calls omitted `source`, so
+      # the catalog listed them and every load threw `source must be a string`. A pin to
+      # that version is a dead end, and npm's deprecation warning is the only place a
+      # consumer sees it. `continue-on-error` keeps this advisory: a deprecate failure
+      # must never redden a release that published correctly, and the version being
+      # deprecated no longer exists in some registry states anyway.
+      - name: Deprecate 0.4.0
+        if: steps.preflight.outputs.exists == 'false'
+        continue-on-error: true
+        run: npm deprecate '@tacrine_f/oh-my-dsh-omo-fork-chs@0.4.0' "skills fail to load (missing source); use 0.4.2" --registry https://registry.npmjs.org/
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
