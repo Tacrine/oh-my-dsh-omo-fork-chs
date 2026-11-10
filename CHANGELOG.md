@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] — 2026-11-10
+
+### Fixed
+
+- **Re-issues 0.4.1 under a version tag whose release passed triple review, CI and the
+  isolated-profile check.** No code differs from 0.4.1: the skill registrations in
+  `caveman-autoload.mjs` and `tool-gate.mjs` already pass `source: 'bundled'`, and both
+  `caveman-ultra` and `mcp-lazy-load` load through the real `SkillRegistry.get()`.
+- **`0.4.0` is deprecated from this release's workflow.** The release job now runs
+  `npm deprecate @tacrine_f/oh-my-dsh-omo-fork-chs@0.4.0`, so an install that pins the broken
+  version is told to move to `0.4.2`. The step is `continue-on-error: true`: a deprecate
+  failure must never fail a release that already published successfully.
+
 ## [0.4.1] — 2026-11-09
 
 ### Fixed
