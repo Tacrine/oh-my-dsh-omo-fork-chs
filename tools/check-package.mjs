@@ -70,7 +70,7 @@ import { pathToFileURL } from 'node:url'
 /** The package identity this repository is expected to publish under. */
 const EXPECTED = {
   name: '@tacrine_f/oh-my-dsh-omo-fork-chs',
-  version: '0.4.2',
+  version: '0.4.3',
   license: 'SEE LICENSE IN NOTICE.md',
 }
 

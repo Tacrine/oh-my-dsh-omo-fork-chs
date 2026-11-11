@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] — 2026-11-11
+
+### Changed
+
+- **Prometheus 规划 persona 的子代理派发纪律改为常驻 lane 复用。** 新增「审查 lane 常驻复用」段（与 `atlas.md:194-278` 对齐），把审查阶段的三条 lane（metis / momus / oracle）固定为整场会话复用，并把冷启收紧为「两类语境 + 五项具名理由 + 每 lane 每计划 ≤1 次预算」；同时明确执行类 lane（`subagent_sisyphus` / `subagent_hephaestus` / `subagent_sisyphus_junior`）在本 persona 下首次创建次数恒为 0。删除了三处悬空的「强制条款」引用、两处会把单张失败票放大成整轮全量的重跑表述，并补齐 metis 双角色同一 child、探索期角度复用、名册以 `list_agents` 为唯一权威等口径。
+- **门禁重钉。** `tools/check-package.mjs` 的 persona 字节钉与 A14 机器路径行号按新内容重钉（`personas/prometheus.md` = 50100 B；八条行号 354/364/375/391/407/418/434/446）。
+
 ## [0.4.2] — 2026-11-10
 
 ### Fixed
