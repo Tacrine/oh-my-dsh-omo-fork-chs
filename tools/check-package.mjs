@@ -70,7 +70,7 @@ import { pathToFileURL } from 'node:url'
 /** The package identity this repository is expected to publish under. */
 const EXPECTED = {
   name: '@tacrine_f/oh-my-dsh-omo-fork-chs',
-  version: '0.4.2',
+  version: '0.4.3',
   license: 'SEE LICENSE IN NOTICE.md',
 }
 
@@ -84,7 +84,7 @@ const PERSONA_TABLE = [
   ['momus.md', 8444],
   ['multimodal-looker.md', 3595],
   ['oracle.md', 7684],
-  ['prometheus.md', 41324],
+  ['prometheus.md', 50100],
   ['sisyphus-junior.md', 4015],
   ['sisyphus.md', 28719],
 ]
@@ -258,14 +258,14 @@ const WINDOWS_HOME_MARKER = '%' + 'USERPROFILE' + '%'
  */
 const MACHINE_PATH_ALLOWLIST = [
   { path: 'personas/librarian.md', line: 229, reason: 'illustrative Windows temporary-directory example in a fenced block' },
-  { path: 'personas/prometheus.md', line: 282, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 292, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 303, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 319, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 335, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 346, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 362, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 374, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 354, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 364, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 375, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 391, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 407, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 418, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 434, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 446, reason: 'the source deployment recovery helper, quoted in an invocation template' },
   { path: 'personas/sisyphus.md', line: 52, reason: 'the source deployment recovery helper, named in the assistant-recovery instruction' },
 ]
 
