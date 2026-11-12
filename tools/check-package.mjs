@@ -76,17 +76,17 @@ const EXPECTED = {
 
 /** The persona file names, in the order the frozen byte table lists them. */
 const PERSONA_TABLE = [
-  ['atlas.md', 41598],
-  ['explore.md', 4720],
-  ['hephaestus.md', 23405],
-  ['librarian.md', 11517],
-  ['metis.md', 10415],
-  ['momus.md', 8444],
-  ['multimodal-looker.md', 3595],
-  ['oracle.md', 7684],
-  ['prometheus.md', 50100],
-  ['sisyphus-junior.md', 4015],
-  ['sisyphus.md', 28719],
+  ['atlas.md', 41640],
+  ['explore.md', 4722],
+  ['hephaestus.md', 23411],
+  ['librarian.md', 11515],
+  ['metis.md', 10419],
+  ['momus.md', 8451],
+  ['multimodal-looker.md', 3593],
+  ['oracle.md', 7700],
+  ['prometheus.md', 50028],
+  ['sisyphus-junior.md', 4018],
+  ['sisyphus.md', 28690],
 ]
 
 /** Every entry `files[]` must cover, and the bare name it must never contain. */
@@ -257,16 +257,16 @@ const WINDOWS_HOME_MARKER = '%' + 'USERPROFILE' + '%'
  * itself covered by the scan below.
  */
 const MACHINE_PATH_ALLOWLIST = [
-  { path: 'personas/librarian.md', line: 229, reason: 'illustrative Windows temporary-directory example in a fenced block' },
-  { path: 'personas/prometheus.md', line: 354, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 364, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 375, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 391, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 407, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 418, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 434, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/prometheus.md', line: 446, reason: 'the source deployment recovery helper, quoted in an invocation template' },
-  { path: 'personas/sisyphus.md', line: 52, reason: 'the source deployment recovery helper, named in the assistant-recovery instruction' },
+  { path: 'personas/librarian.md', line: 252, reason: 'illustrative Windows temporary-directory example in a fenced block' },
+  { path: 'personas/prometheus.md', line: 361, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 371, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 382, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 398, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 414, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 425, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 441, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/prometheus.md', line: 453, reason: 'the source deployment recovery helper, quoted in an invocation template' },
+  { path: 'personas/sisyphus.md', line: 54, reason: 'the source deployment recovery helper, named in the assistant-recovery instruction' },
 ]
 
 /** The number of tolerated positions; asserted so the list cannot grow silently. */
