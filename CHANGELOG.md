@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] — 2026-11-12
+
+### Changed
+
+- **十一个 persona 提示词的 markdown 排版规范化。** 对 `personas/*.md` 补齐标题、围栏代码块与列表块前后的空行，删除行尾多余空白；字符内容未做机械改写，围栏代码块内部逐字节保持原样。`atlas.md` 只含排版改动。
+- **`<caveman-mode>` 段落的中文化。** `explore.md`、`metis.md`、`momus.md`、`multimodal-looker.md`、`oracle.md`、`sisyphus-junior.md` 六份 persona 的默认风格段改为中文表述；`hephaestus.md` 去掉行尾的 token 削减比例说法；`prometheus.md` 与 `sisyphus.md` 的同一段落重写，`sisyphus.md` 的「具名工具」升级为二级标题。
+- **门禁重钉。** `tools/check-package.mjs` 的 `PERSONA_TABLE` 十一个字节数按新内容重钉，`MACHINE_PATH_ALLOWLIST` 十条行号随空行插入位移（`librarian.md` 229 → 252，`prometheus.md` 八条 → 361/371/382/398/414/425/441/453，`sisyphus.md` 52 → 54），条目数仍为 10。
+
 ## [0.4.3] — 2026-11-11
 
 ### Changed
