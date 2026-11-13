@@ -19,22 +19,22 @@ preset id 是 `omo-fork-chs`，`order` 是 `11`，与 `tri-agent` **并存**：�
   注入：它在 `isolate: { planMode: true }` realm 内部，从外部注入不会解析成功。
 
 除身份之外，preset 还挂载编码工具链：文件系统与 shell 工具、后台任务、skills、goals、plan mode、
-compaction、委派与 workflows。patch 共 174 条 `- id:` 条目，分属 10 个 preset 声明加 1 条根层
-（host plane）挂载：主 preset `omo-fork-chs` 挂 18 个插件条目，另外 9 个子 preset 分别挂 11 到 13
-个（视觉类那个挂 4 个），根层再挂 1 条 `caveman-autoload`。本包附带 **11 个 persona 文件**；主
-preset 的插件自己读取 `atlas.md` 与 `prometheus.md`，其余 9 个由对应子 preset 的 `dsh-persona`
-条目读取。
+compaction、委派与 workflows。patch 共 178 条 `- id:` 条目，分属 10 个 preset 声明与 1 条根层（host plane）
+挂载：主 preset `omo-fork-chs` 挂 19 个插件条目，另外 9 个子 preset 分别挂 11 到 13 个（视觉类那个挂 4
+个），根层再挂 1 条 `caveman-autoload`。本包附带 **11 个 persona 文件**；主 preset 的插件自己读取
+`atlas.md` 与 `prometheus.md`，其余 9 个由对应子 preset 的 `dsh-persona` 条目读取。
 
 ## 随包内容
 
 | 文件 | 用途 |
 | --- | --- |
-| `cordis.patch.yml` | 已发布的 bundle patch：preset 声明（`id: preset-omo-fork-chs`、`config.id: omo-fork-chs`、`config.name: 'Oh My DSH Chs - OMO Fork'`、`order: 11`）及其 `plugins:` 列表，末尾另有一条根层 `caveman-autoload` 挂载。共 950 行，12 处改写。 |
-| `plan-aware-persona.mjs` | 包入口，注册 plan-aware persona 前缀与配置的 suffix。以 `./persona` 导出。 |
-| `caveman-autoload.mjs` | 根层挂载的插件：注册 `caveman-ultra` skill，并加一条 order 60 的提示段说明本部署的 caveman 规则。以 `./caveman` 导出。 |
+| `cordis.patch.yml` | 已发布的 bundle patch：preset 声明（`id: preset-omo-fork-chs`、`config.id: omo-fork-chs`、`config.name: 'Oh My DSH Chs - OMO Fork'`、`order: 11`）及其 `plugins:` 列表，末尾另有一条根层 `caveman-autoload` 挂载。共 958 行，16 处改写。 |
+| `plan-aware-persona.mjs` | 包入口，注册 plan-aware persona 前缀，以及该前缀的可配置 suffix。以 `./persona` 导出。 |
+| `caveman-autoload.mjs` | 挂在根层的插件：注册 `caveman-ultra` skill，并加一条 order 60 的提示段说明本部署的 caveman 规则。以 `./caveman` 导出。 |
+| `tool-gate.mjs` | 工作区级 MCP 工具门禁：把已配置的 MCP server 工具默认全部屏蔽，按会话逐个放行；同时注册随包的 `mcp-lazy-load` skill。以 `./tool-gate` 导出。 |
 | `index.js` | 包根。它刻意留空：bundle 的行为在 `cordis.patch.yml` 与 `./persona` 里。 |
 | `personas/` | 11 个 persona 文件，已译为简体中文。 |
-| `skills/` | skill 正文。目前只有 `skills/caveman-ultra/` 一个 skill，其 `SKILL.md` 由 `caveman-autoload.mjs` 在挂载时读取。 |
+| `skills/` | skill 正文，共两个：`skills/caveman-ultra/` 由 `caveman-autoload.mjs` 在挂载时读取，`skills/mcp-lazy-load/` 由 `tool-gate.mjs` 在挂载时注册。 |
 | `baseline/` | 移植前 patch 的冻结快照，外加一份说明它能证明什么、不能证明什么的 sidecar。 |
 | `tools/` | 移植、验证、baseline 与包结构检查的命令行工具。 |
 | `test/` | 零依赖测试套件，用 `node --test` 运行。 |
@@ -71,8 +71,8 @@ node "<dsh bin>" plugin --profile <profile> add -w @tacrine_f/oh-my-dsh-omo-fork
 node "<dsh runtime>\@deepseek-ai\dsh\lib\bin.js" plugin --profile web add -w @tacrine_f/oh-my-dsh-omo-fork-chs
 ```
 
-它会在 `$DSH_HOME\profiles\<profile>\` 内运行 pnpm，因此写入一条 `dependencies` 记录。**它不改动
-`dsh.profile.bundles`。**
+它在 `$DSH_HOME\profiles\<profile>\` 内运行 pnpm，往该 profile 的 `dependencies` 里写入一条记录。
+**它不改动 `dsh.profile.bundles`。**
 
 ### 第 2 步：把包加入 `dsh.profile.bundles` 并重启
 
@@ -93,7 +93,7 @@ node "<dsh runtime>\@deepseek-ai\dsh\lib\bin.js" plugin --profile web add -w @ta
 ```
 
 然后**重启 Host 并新开一个会话。** 运行中的 agent 保留它启动时的 composition，所以已存在的会话
-不会加载这个 preset，必须新开。
+不会加载这个预设，必须新开。
 
 ### 验证安装已生效
 
@@ -109,10 +109,10 @@ node "<dsh bin>" --profile <profile> --dump-config
 
 ## 安装后你可能需要自己做的改动
 
-已发布的 patch **只**包含可移植的 preset 声明。有两样东西属于产出这个 fork 的那台机器，刻意没有
+已发布的 patch **只**包含可移植的预设声明。有两样东西属于产出这个 fork 的那台机器，刻意没有
 发布，你可能想自己加回去：
 
-1. **把 `omo-fork-chs` 设成默认 preset。** 已发布的 patch **不**设置默认 preset，本包也不会强加
+1. **把 `omo-fork-chs` 设成默认预设。** 已发布的 patch **不**设置默认预设，本包也不会强加
    一个。想让它成为默认，就在自己的 profile 或 overlay patch 里设置 registry 条目：
 
    ```yaml
@@ -122,10 +122,10 @@ node "<dsh bin>" --profile <profile> --dump-config
    ```
 
    （`@deepseek-ai/dsh-web-app` 会插入同一条条目，但 `default: standard`；上面这条替换整个
-   config，所以只有 default 改变。）
+   config，改动只落在 `default` 上。）
 
-2. **给 `subagent_multimodal_looker` 一条模型路由。** 产出这个 fork 的 bundle 曾为那条条目带一条
-   机器专属的 `provider` 与 `model` 路由，那条路由**不可移植**，所以已发布的 patch 完全不包含
+2. **给 `subagent_multimodal_looker` 一条模型路由。** 产出这个 fork 的 bundle 曾在那条条目上写过
+   一条机器专属的 `provider` 与 `model` 路由，那条路由**不可移植**，所以已发布的 patch 里没有
    `agentOptions`。没有它时，多模态子代理继承 deployment 的路由。要固定一条，就在自己的 overlay
    里给那条条目加一个 `agentOptions` 块：
 
@@ -149,14 +149,14 @@ plan-aware-persona: cannot read persona "file:///.../personas/atlas.md"
 plan-aware-persona: persona "file:///.../personas/atlas.md" is empty
 ```
 
-这是刻意的。空的 persona 前缀会悄悄剥掉 agent 的身份，而一条点出文件名的挂载错误，远比一个安静地
-丢掉自己指令的 agent 好处理。
+这是刻意的：空的 persona 前缀会悄悄剥掉 agent 的身份，而一条点出文件名的挂载错误，比一个安静丢掉
+自己指令的 agent 好处理得多。
 
 ## Peer 模型
 
 patch 挂载的每个 `@deepseek-ai/*` 包都声明为 **`peerDependency`**，不是普通 `dependency`。它们由
 DSH 提供，bundle 不得安装自己的副本。peer 范围是
-`>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`，既保留 0.1.7 线，又加入
+`>=0.1.7-rc.2 <0.2.0 || >=0.2.0-0 <0.3.0-0 || >=0.2.1-alpha.1 <0.3.0-0`，同时保留 0.1.7 线与
 0.2 线（`@deepseek-ai/cordis` 为 `^4.0.1`）。本包声明 25 条 peer，**没有**运行期依赖，也**没有**
 开发依赖，所以测试与检查链中零依赖的那部分不需要安装任何东西。
 
@@ -168,7 +168,7 @@ DSH profile 的 `.npmrc` 设了 `auto-install-peers=false`，这些 peer 是**�
 下面全部在仓库根目录运行，**无需安装**。只有 `check:full` 例外，它需要 runtime。
 
 ```powershell
-# 1. 测试套件。零依赖。74 个测试。
+# 1. 测试套件。零依赖。94 个测试。
 npm run test
 
 # 2. 检查链。零依赖，不需要 runtime。
@@ -189,25 +189,27 @@ npm run port -- --src <dir holding cordis.patch.yml>
 
 每一条各自证明什么：
 
-- **`npm run test`** 运行 `node:test` 套件，共 74 个测试，不需要安装任何东西。九个测试文件各自覆盖
-  一件事：三组正向改写、反向改写及其往返、从已发布的 patch 重新推导 baseline、参数解析器、从两侧
-  检验机器路径模式、零字节守卫、包检查的失败路径、提示变量守卫（`prompt-variable-guard`），以及
-  caveman loader 的注册契约（`caveman-loader`）。另有 `real-install-verify` 一个真机安装用例：未设
-  `DSH_BIN` 时它整组 skip，所以干净克隆里看到的 `skipped` 就是它。
+- **`npm run test`** 运行 `node:test` 套件，共 94 个测试（93 通过，1 个真机安装用例在未设 `DSH_BIN`
+  时整组 skip），不需要安装任何东西。十个测试文件各自覆盖一件事：三组正向改写、反向改写及其往返、
+  从已发布的 patch 重新推导 baseline、参数解析器、从两侧检验机器路径模式、零字节守卫、包检查的失败
+  路径、提示变量守卫（`prompt-variable-guard`）、caveman loader 的注册契约（`caveman-loader`），
+  以及 MCP 门禁的发现、工作区策略与三条元工具（`tool-gate`）。另有 `real-install-verify` 一个真机
+  安装用例：未设 `DSH_BIN` 时它整组 skip，所以干净克隆里看到的 `skipped` 就是它。
 - **`npm run check`** 是 `node tools/check-package.mjs && node tools/verify-patch.mjs`。
 
-  前者运行一整套结构与许可断言，覆盖：manifest 身份；四个 `exports`；唯一一条自引用条目；九条
-  persona 锚点及其文件；`files[]` 覆盖；11 个 persona 的字节数；许可指针；三份许可文档；绝不允许
-  进入 tarball 的路径；`files[]` 所列每个目录下的未跟踪文件；npm 无视 `files[]` 也会自动收录的根目录
-  文件；提供上游指纹时的比对；修改声明的各项主张；许可范围映射，以及把每个范围块逐条钉到其所声明
-  内容的锚点；机器路径扫描；约束移植前包名出现位置的类；本仓库向消费者复制的两个模块的 SHA256；
-  每份带内部锚点的文档中锚点能否解析到标题；patch 的形状。
+  前者运行一整套结构与许可断言，覆盖：manifest 身份；`exports` 的四个必需键（manifest 实有六个）；
+  唯一一条自引用条目；九条 persona 锚点及其文件；`files[]` 覆盖；11 个 persona 的字节数；许可指针；
+  三份许可文档；绝不允许进入 tarball 的路径；`files[]` 所列每个目录下的未跟踪文件；npm 无视 `files[]`
+  也会自动收录的根目录文件；提供上游指纹时的比对；修改声明的各项主张；许可范围映射，以及把每个范围
+  块逐条钉到其所声明内容的锚点；机器路径扫描；约束移植前包名出现位置的类；本仓库向消费者复制的三个模块
+  的 SHA256（`index.js`、`plan-aware-persona.mjs`、`caveman-autoload.mjs`）；每份带内部锚点的
+  文档中锚点能否解析到标题；patch 的形状。
 
   后者证明已发布的 patch 仍等于三项已记录改写从冻结 baseline 算出的结果，并报告
-  `verdict: "IDENTICAL"` 与 12 处改写点。两者都**零依赖**，所以在干净克隆里无需安装即可通过。
+  `verdict: "IDENTICAL"` 与 16 处改写点。两者都**零依赖**，所以在干净克隆里无需安装即可通过。
 - **`npm run check:full`** 就是单独运行 `node tools/verify-patch.mjs`。当 `DSH_RUNTIME` 指向一个包含
   `js-yaml` 与 `@deepseek-ai/cordis-plugin-include` 的绝对 `node_modules` 时，校验器会用真正的
-  entry-list dialect 解析两份文档并做结构化比对，报告 `yamlCompare: "ok"` 与 `sites.length` 为 12。
+  entry-list dialect 解析两份文档并做结构化比对，报告 `yamlCompare: "ok"` 与 `sites.length` 为 16。
 
   **没有 runtime 时它报告 `yamlCompare: "skipped"`，仍以 0 退出**，所以只看退出码不算证据，必须断言
   字段。这也是这一步与 `check` 分开、以及存在 `npm run setup:verify` 的原因：它把 runtime 装进
@@ -224,11 +226,50 @@ npm run port -- --src <dir holding cordis.patch.yml>
 > **`npm run check` 与 `npm test` 都必须在 git checkout 内运行。** 包检查的三条断言（许可范围映射、
 > 机器路径扫描，以及约束移植前包名出现位置的类）都定义在**受版本跟踪的**文件集合之上，所以该工具向
 > `git ls-files` 索取这个集合。git 无法回答时，工具以 `run inside a git checkout` 失败，而不是悄悄
-> 跳过这三条。`npm test` 出于同样原因也需要检出：它最后一个用例会针对真实目录树运行包检查，所以在
-> 仓库之外解包同样失败。
+> 跳过这三条。`npm test` 同样需要检出：它最后一个用例会针对真实目录树运行包检查，所以在仓库之外解包
+> 同样失败。
 >
 > 因此在仓库之外解包已发布 tarball 的使用者会看到这个错误，这是刻意的：一条对从未做过的工作报告
 > 成功的映射检查，比没有检查更糟。已发布的包包含这些工具与测试套件，所以这条链可以从克隆里重跑。
+
+### MCP 懒加载门禁
+
+`tool-gate.mjs` 做**工作区级 MCP 工具门禁**。它从 `@deepseek-ai/dsh-mcp-client` 的 loader 条目取本部署的
+MCP 清单，把每台 server 的工具默认全部 mask 住，再按会话逐个放行。于是一个预设不必在每一轮请求里
+背上每台已挂载 server 的工具 schema。这套门禁是 `0.4.0` 起加入的；本节描述的行为由
+`test/tool-gate.test.mjs` 断言。
+
+**授权来自工作区。** 谁能用哪台 server 由会话 cwd 下的 `.dsh/mcp-servers.json` 决定，文件里是 `allow` 与
+`deny` 两张表，可用集合是 `discovered ∩ allow - deny`：
+
+- `deny` 单独列出 = 已配置但未授权，`enable_mcp` 可以解除；
+- `deny` 与 `allow` 同时列出才硬否决；
+- 文件缺失、`allow` 为空、且没有可从 `deny` 提升的项，表示本工作区一台 MCP server 都用不了；`deny` 本身
+  从不授权。
+
+配置由门禁自动创建与维护：某个工作目录第一次触发 `agent/created` 时写入该文件，`allow` 为空、`deny` 收全
+已发现的 server；后加进部署的 server 会在下一次 reconcile 时补进 `deny`。手写的配置不会被覆盖（`$comment`
+这类未知键会保留），读不了的文件只记日志、保持原样。已配置但未连接的 server 仍会列出，`connected` 为
+`false`。
+
+**三条模型侧工具。**
+
+| 工具 | 作用 |
+| --- | --- |
+| `list_mcp_servers` | 列出可用 server 及其 `server` / `connected` / `toolCount` / `enabled`。尚无授权但已发现 server 时返回空列表，并在 `message` 里点名可交给 `enable_mcp` 的候选 |
+| `enable_mcp` | 把一台 server 从 `deny` 移进 `allow`，写盘持久化 |
+| `disable_mcp` | 把一台 server 从 `allow` 移回 `deny`，写盘持久化 |
+
+`enable_mcp` / `disable_mcp` 写透到磁盘：`allow` 授权会被同一工作区的后续会话继承，但 `enabled` 是每会话
+的内存态，新会话仍需再调一次 `enable_mcp`。**热加载**：调工具或手改配置文件都生效于下一条消息，不需要重启
+Host。
+
+**随包 skill。** `skills/mcp-lazy-load/` 随包发布，由 `tool-gate.mjs` 在插件启动时注册。`0.4.1` 起这次注册
+带上 `source: 'bundled'`，而这个字段是 skill 能被真正加载的前提：缺它时 skill 会出现在 catalog 里，却永远
+加载不了，报 `loaded skill "<name>" source must be a string`。
+
+**挂载范围是四个预设。** 主预设 `omo-fork-chs`，加三个执行预设 `omo-sisyphus-junior`、`omo-hephaestus` 与
+`omo-sisyphus`。其它预设没有这三条工具，子代理会话只在这四个预设里才继承同样的默认 mask 行为。
 
 ## 真机安装验证（自动化）
 
@@ -291,15 +332,15 @@ sha，发布之后用版本号。
 与源 caveman 技能同源，差别只在默认级别、描述、触发词与边界段按本部署改写，并且不含本部署不提供的
 斜杠命令。
 
-**生效方式。** 本包在 **bundle 根层（host plane）** 挂一个模块 `caveman-autoload.mjs`，它做两件事：
+**生效方式。** 本包在 **bundle 根层** 挂一个模块 `caveman-autoload.mjs`，它做两件事：
 
 - 注册一条 system prompt section，名为 `caveman:loader`，order 60（落在 deployment persona 的 0 与
   plan policy 的 500 之间）；
 - 在 skill catalog 里 runtime 注册 `caveman-ultra`，正文读自包内 `skills/caveman-ultra/SKILL.md`。
 
-挂载位置在根层而不是某个 preset 内，所以它覆盖本进程里的每个会话，不只覆盖选中本 preset 的那些。
-这一点是**结构上的预期**（根层即 host plane），本版**没有用真实会话确认 catalog 可见性**——沙箱里没有
-provider 凭据，能验的只是注册调用本身。
+挂载位置在根层而不是某个预设内，所以它覆盖本进程里的每个会话，不只覆盖选中本预设的那些。这一点是
+**结构上的预期**，本版**没有用真实会话确认 catalog 可见性**——沙箱里没有 provider 凭据，能验的只是
+注册调用本身。
 
 **旧副本会被取代。** 若环境里另有一条名为 `caveman` 的 skill（例如 `$DSH_HOME/skills/caveman`，正文
 默认 `full`），loader 文本会把那条标成「本部署已取代的旧副本（默认 full）」，并要求按 `caveman-ultra`
@@ -312,7 +353,7 @@ provider 凭据，能验的只是注册调用本身。
 
 **关闭。** 说 `stop caveman` 或 `normal mode`。
 
-**覆盖缺口是 9/10。** 主 preset 加 9 个子 preset，其中 9 个既有 skill provider 也有 skill 工具，能
+**覆盖是 9/10。** 主预设加 9 个子预设，其中 9 个既有 skill provider 也有 skill 工具，能
 列出并调用这个 skill；`omo-multimodal-looker` 两者都没有，它只收到 loader 文本，拿不到 skill 本身。
 这是已知取舍，没有为它强行补一条 skill 行。
 
@@ -330,9 +371,8 @@ provider 凭据，能验的只是注册调用本身。
 - [`LICENSE-SUL-1.0.md`](./LICENSE-SUL-1.0.md) 覆盖上游衍生内容：`personas/`、`cordis.patch.yml`、
   `plan-aware-persona.mjs`、`index.js` 与 `baseline/cordis.patch.yml`。
 - [`LICENSE-MIT.md`](./LICENSE-MIT.md) 覆盖我们自己的作品：`tools/`、`test/`、`.github/`、
-  `baseline/README.md`、`package.json`、`.gitignore`、`.gitattributes`、`README.md`、
-  `CHANGELOG.md`
-  与 `NOTICE.md`。
+  `baseline/README.md`、`package.json`、`caveman-autoload.mjs`、`tool-gate.mjs`、`skills/`、
+  `.gitignore`、`.gitattributes`、`README.md`、`CHANGELOG.md` 与 `NOTICE.md`。
 - [`NOTICE.md`](./NOTICE.md) 是权威声明：修改声明、上游署名，以及机器可读的许可范围映射，其中包含
   决定每个受跟踪路径归哪个块的匹配规则。本 README 与 `NOTICE.md` 不一致时，以 NOTICE 为准。
 
@@ -354,7 +394,7 @@ bundle patch 表达式的**逐字片段**，以便生成和校验该 patch。那
 
 ## 已知问题
 
-- **`0.1.0` 至 `0.2.2` 全部带有同一个提示变量 bug，而且现在**仍可正常安装**（尚未 deprecate，
+- **`0.1.0` 至 `0.2.2` 全部带有同一个提示变量 bug，并且至今仍可正常安装**（尚未 deprecate，
   因为发布端本机凭据没有写权）。这些版本的 `cordis.patch.yml` 在 persona 的 `suffix:` 里写了
   `{{cwd}}`，而运行时只注册 `provider` 与 `model`，所以会话在组装提示词时直接失败：
   `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`。装包本身会成功，
@@ -413,11 +453,11 @@ bundle patch 表达式的**逐字片段**，以便生成和校验该 patch。那
 - **本仓库与英文 fork 并存。** `Tacrine/oh-my-dsh-omo-fork` 是独立仓库，有自己的包、自己的 preset id
   和自己的范围映射。两个仓库互不影响：它们共享上游血缘，本包中没有任何内容读取、写入或依赖另一个。
 - **0.1.0 是本仓库的首次发布，此前没有任何版本发布过。** 本包在 npm 上没有前身，所以没有更早的产物
-  可供对照，也不存在从旧版本升级的路径。
+  可以对照，也不存在从旧版本升级的路径。
 
 ## 源流
 
-本包源自那份简体中文 agent-preset bundle。它当时以 **link 安装**的形态存在：一个接入某台机器 DSH
+本包源自那份简体中文 agent-preset bundle。它当时是 **link 安装**：一个接入某台机器 DSH
 profile 的私有依赖，指向一个本地目录。那种形态无法装到别处，因为它的 patch 写出的是机器本地包名，
 persona 锚点也相对于 profile 目录解析。
 
@@ -428,5 +468,11 @@ persona 锚点也相对于 profile 目录解析。
 
 上游项目是 **oh-my-openagent**，曾以 **oh-my-opencode** 之名发布
 （https://github.com/code-yeongyu/oh-my-openagent）。本仓库内容派生自上游 commit
-`3c711483856207ef530c09d062fa9077c225debbe`，对应上游版本 **5.0.1**。persona 正文、工具链组成与
+`3c711483856207ef530c09d062fa9077c225debb`，对应上游版本 **5.0.1**。persona 正文、工具链组成与
 插件都沿用上游设计；本 fork 的贡献是简体中文翻译与打包拆分。
+
+第二条血缘在 skill 上。本包随附的 `caveman-ultra` skill，正文改写自 **caveman** 项目
+（[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)，使用协议为
+**Apache License 2.0**）：中文与文言文分级、`caveman-ultra` 的整合、默认级别与触发词都是本仓库的
+改写，不是上游原文。它此前作为本机 Legacy 部署的 `caveman` skill 存在，迁入本包时做过六项改写。
+随包发布的这份改写副本归入哪一个许可块，由 [`NOTICE.md`](./NOTICE.md) 的范围映射决定。
