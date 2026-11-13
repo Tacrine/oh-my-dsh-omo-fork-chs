@@ -179,10 +179,9 @@ MIT 范围上有一条界定：`tools/` 与 `test/` 是我们自己的作品、�
 - **内容正确性的既有证据不随包发布**：`omo-fork-chs-*` 证据集里 `verify-omo-fork-chs-bundle` 报告 `FAITHFUL`、`verify-omo-fork-chs-deport` 报告 `CLEAN`；这些校验器依赖只存在于移植准备机器上的目录，刻意不随包发布。
 - **内嵌的 persona 正文带有机器本地路径**：三份 persona 文档里共十行写出了本地化机器的绝对路径，违反本仓库「提交的文件不得写机器绝对路径」的规则，容忍它只是因为与源 bundle 的字节一致性是更硬的约束。受影响的行在 `tools/check-package.mjs` 里逐条列举，`NOTICE.md` 记为修改条目 8；本文档不复制那些路径，因为它也在该扫描范围内。
 - **persona 文件缺失或为空会让挂载失败**，并在错误里点出文件名，例如 `plan-aware-persona: cannot read persona "file:///.../personas/atlas.md"`。这是刻意的：空的 persona 前缀会悄悄剥掉 agent 的身份，而点出文件名的挂载错误比一个安静丢掉指令的 agent 好处理得多。
-- **本仓库与英文 fork 并存**：`Tacrine/oh-my-dsh-omo-fork` 是独立仓库，有自己的包、preset id 与范围映射；两个仓库互不影响，本包不读取、写入或依赖它。
 
 ## 上游鸣谢
 
 上游项目是 **oh-my-openagent**，曾以 **oh-my-opencode** 之名发布（https://github.com/code-yeongyu/oh-my-openagent）；本仓库派生自上游 commit `3c711483856207ef530c09d062fa9077c225debb`（版本 **5.0.1**）；persona 正文、工具链与插件沿用上游设计，本 fork 的贡献是简体中文翻译与打包拆分。
 
-第二条血缘在 skill 上：随附的 `caveman-ultra` 正文改写自 **caveman** 项目（[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)，协议为 **Apache License 2.0**）。中文与文言文分级、整合到 `caveman-ultra`、默认级别与触发词都是本仓库改写，不是上游原文；它此前作为本机 Legacy 部署的 `caveman` skill 存在，迁入本包时做过六项改写。随包副本归入哪个许可块由 [`NOTICE.md`](./NOTICE.md) 的范围映射决定。
+第二条：随附的 `caveman-ultra` 正文改写自 **caveman** 项目（[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)，协议为 **Apache License 2.0**）。中文与文言文分级、整合到 `caveman-ultra`、默认级别与触发词都是本仓库改写，不是上游原文；它此前作为本机 Legacy 部署的 `caveman` skill 存在，迁入本包时做过六项改写。随包副本归入哪个许可块由 [`NOTICE.md`](./NOTICE.md) 的范围映射决定。
